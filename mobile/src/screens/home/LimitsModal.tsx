@@ -81,7 +81,7 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
           {credits ? (
             <View style={styles.creditsRow}>
               <Text style={styles.creditsLabel}>{t("limits.credits")}</Text>
-              <Text style={styles.creditsValue}>{creditsLabel(credits)}</Text>
+              <Text style={styles.creditsValue}>{creditsLabel(credits, t)}</Text>
             </View>
           ) : null}
 

@@ -161,6 +161,8 @@ export const STRINGS = {
   "limits.weekly": { en: "Weekly window", zh: "每周窗口" },
   "limits.weeklyShort": { en: "Weekly", zh: "每周" },
   "limits.unlimited": { en: "Unlimited", zh: "不限" },
+  "limits.refreshingMenu": { en: "Refreshing", zh: "刷新中" },
+  "limits.needsAttention": { en: "Needs attention", zh: "需要处理" },
   "limits.resetUnknown": { en: "Reset not reported", zh: "未提供重置时间" },
   "limits.unavailable": { en: "Unavailable", zh: "不可用" },
   "limits.refreshing": { en: "Refreshing limits...", zh: "正在刷新额度…" },
@@ -188,6 +190,7 @@ export const STRINGS = {
   "composer.noSpeedTiers": { en: "No speed tiers", zh: "没有可用的速度档位" },
   "composer.unavailableForModel": { en: "Unavailable for this model", zh: "该模型不支持" },
   "composer.useDefaultTier": { en: "Use the model default tier", zh: "使用模型默认档位" },
+  "composer.attachFile": { en: "Attach file", zh: "上传文件" },
 
   "settings.executionMode": { en: "Execution Mode", zh: "执行模式" },
   "settings.title": { en: "Settings", zh: "设置" },

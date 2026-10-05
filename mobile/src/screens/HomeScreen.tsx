@@ -373,27 +373,12 @@ export function HomeScreen() {
           <View style={styles.composerRow}>
             <ComposerMenu
               selectedModel={selectedModel}
+              onAttachFile={() => void bridge.attachFile()}
               onOpenLimits={() => {
                 setLimitsVisible(true);
                 void bridge.refreshAccount();
               }}
             />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("home.attachFile")}
-              disabled={bridge.isUploadingAttachment}
-              onPress={() => void bridge.attachFile()}
-              style={({ pressed }) => [
-                styles.composerMenuButton,
-                (pressed || bridge.isUploadingAttachment) && styles.composerMenuButtonPressed
-              ]}
-            >
-              {bridge.isUploadingAttachment ? (
-                <ActivityIndicator size="small" color={colors.accent} />
-              ) : (
-                <Paperclip size={18} color={colors.textMuted} />
-              )}
-            </Pressable>
             <View style={styles.composerInputWrap}>
               {selectedMentions.length > 0 || bridge.pendingAttachments.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mentionChips}>

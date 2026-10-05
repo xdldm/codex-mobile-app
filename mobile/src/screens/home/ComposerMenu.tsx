@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronLeft, ChevronRight, Gauge, Menu, ShieldCheck, X, Zap } from "lucide-react-native";
+import { Bot, Check, ChevronLeft, ChevronRight, Gauge, Menu, Paperclip, ShieldCheck, X, Zap } from "lucide-react-native";
 import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,10 +22,12 @@ type MenuPanel = "main" | "models" | "effort" | "fast";
 
 export function ComposerMenu({
   selectedModel,
-  onOpenLimits
+  onOpenLimits,
+  onAttachFile
 }: {
   selectedModel: CodexModel | null;
   onOpenLimits: () => void;
+  onAttachFile: () => void;
 }) {
   const bridge = useBridge();
   const insets = useSafeAreaInsets();
@@ -104,10 +106,19 @@ export function ComposerMenu({
                 <MenuItem
                   icon={<ShieldCheck size={18} color={colors.textMuted} />}
                   label={t("composer.limits")}
-                  detail={limitsMenuDetail(bridge)}
+                  detail={limitsMenuDetail(bridge, t)}
                   onPress={() => {
                     close();
                     onOpenLimits();
+                  }}
+                />
+                <MenuItem
+                  icon={<Paperclip size={18} color={colors.textMuted} />}
+                  label={t("composer.attachFile")}
+                  detail={t("home.attachFile")}
+                  onPress={() => {
+                    close();
+                    onAttachFile();
                   }}
                 />
               </View>

@@ -2,17 +2,18 @@
 // the limits modal meters, and credit/reset labels). Pure presentation logic.
 
 import type { CodexAccountResponse, RateLimitSnapshot } from "../../domain/bridge";
+import type { Translator } from "../../i18n";
 
 export function limitsMenuDetail(bridge: {
   account: CodexAccountResponse | null;
   accountError: string | null;
   isRefreshingAccount: boolean;
-}) {
+}, t: Translator) {
   if (bridge.isRefreshingAccount) {
-    return "Refreshing";
+    return t("limits.refreshingMenu");
   }
   if (bridge.accountError) {
-    return "Needs attention";
+    return t("limits.needsAttention");
   }
   const limits = getCodexLimits(bridge.account);
   const planType = limits?.planType ?? bridge.account?.account?.planType;
@@ -69,9 +70,12 @@ export function planTypeLabel(planType: string) {
   return planType.replace(/_/g, " ");
 }
 
-export function creditsLabel(credits: NonNullable<RateLimitSnapshot["credits"]>) {
+export function creditsLabel(
+  credits: NonNullable<RateLimitSnapshot["credits"]>,
+  t: Translator
+) {
   if (credits.unlimited) {
-    return "Unlimited";
+    return t("limits.unlimited");
   }
   if (credits.balance) {
     return credits.balance;
