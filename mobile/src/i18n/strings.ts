@@ -38,6 +38,10 @@ export const STRINGS = {
   "home.attachedPromptOne": { en: "Please review the attached file.", zh: "请查看附件。" },
   "home.attachedPromptMany": { en: "Please review the attached files.", zh: "请查看这些附件。" },
   "home.scrollToBottom": { en: "Scroll to bottom", zh: "回到底部" },
+  "home.waitingForBridge": {
+    en: "Waiting for the bridge connection. Start WireGuard (or check the tunnel) and this screen reconnects on its own.",
+    zh: "正在等待连接 bridge。请打开 WireGuard（或检查隧道），连上后此界面会自动恢复，无需重启 App。"
+  },
 
   "menu.title": { en: "Menu", zh: "菜单" },
   "menu.close": { en: "Close menu", zh: "关闭菜单" },

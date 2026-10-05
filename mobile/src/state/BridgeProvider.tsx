@@ -124,6 +124,7 @@ type BridgeContextValue = {
   setNetworkAccessEnabled: (enabled: boolean) => void;
   setLanguage: (preference: LanguagePreference) => void;
   deepSeekBalance: DeepSeekBalance | null;
+  waitingForBridge: boolean;
   setExecutionSettings: (
     settings: Partial<
       Pick<
@@ -217,6 +218,9 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const [pendingAttachments, setPendingAttachments] = useState<UploadedAttachment[]>([]);
   const [activeRuns, setActiveRuns] = useState<BridgeRunSummary[]>([]);
   const [isBooting, setIsBooting] = useState(true);
+  // True while the bridge is unreachable (typically WireGuard not up yet). The
+  // app keeps retrying instead of latching an error that only a restart cleared.
+  const [waitingForBridge, setWaitingForBridge] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshingAccount, setIsRefreshingAccount] = useState(false);
   const [isRefreshingMentions, setIsRefreshingMentions] = useState(false);
@@ -738,6 +742,48 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       void refreshAll();
     }
   }, [isBooting, refreshAll]);
+
+  useEffect(() => {
+    if (isBooting) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let delay = 2000;
+
+    const attempt = async () => {
+      try {
+        const health = await client.health();
+        if (cancelled) {
+          return;
+        }
+
+        setHealth(health);
+        if (waitingForBridge) {
+          // The tunnel just came up: pull everything now that we can reach it.
+          setWaitingForBridge(false);
+          void refreshAll();
+        }
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        setWaitingForBridge(true);
+        timer = setTimeout(attempt, delay);
+        delay = Math.min(delay + 2000, 10000);
+      }
+    };
+
+    void attempt();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [client, isBooting, refreshAll, waitingForBridge]);
 
   const refreshWorkspaces = useCallback(async () => {
     setIsRefreshing(true);
@@ -1825,6 +1871,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       setNetworkAccessEnabled: (networkAccessEnabled) => updatePreferences({ networkAccessEnabled }),
       setLanguage: (language) => updatePreferences({ language }),
       deepSeekBalance,
+      waitingForBridge,
       setExecutionSettings: updatePreferences,
       refreshAll,
       refreshAccount,
@@ -1857,6 +1904,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       activities,
       activeRuns,
       deepSeekBalance,
+      waitingForBridge,
       allowlistFile,
       account,
       accountError,

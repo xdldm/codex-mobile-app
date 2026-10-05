@@ -354,6 +354,12 @@ export function HomeScreen() {
               {bridge.error}
             </Text>
           </View>
+        ) : bridge.waitingForBridge ? (
+          <View style={styles.errorBand}>
+            <Text numberOfLines={2} style={styles.errorText}>
+              {t("home.waitingForBridge")}
+            </Text>
+          </View>
         ) : null}
 
         {/* The message area is its own container so the jump-to-bottom button can
