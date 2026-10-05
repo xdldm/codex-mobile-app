@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Codex Mobile">
+  <title>Codex Mobile</title>
+  <!--
+    Launcher icon source. Mark is a terminal prompt (">_"), matching the app's
+    teal accent. Render with any SVG rasterizer, e.g.:
+      npx sharp-cli -i icon.svg -o icon.png resize 1024 1024
+    Keep the mark inside the central 66% so adaptive icons are not clipped.
+  -->
+  <defs>
+    <linearGradient id="codexMobileBackground" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#14566A"/>
+      <stop offset="1" stop-color="#07222C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#codexMobileBackground)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="101">
+    <path d="M250 310 L480 512 L250 714" stroke="#5BD1E6"/>
+    <path d="M562 714 H774" stroke="#EAF7FB"/>
+  </g>
+</svg>

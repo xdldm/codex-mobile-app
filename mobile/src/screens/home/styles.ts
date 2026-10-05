@@ -225,6 +225,28 @@ export const styles = StyleSheet.create({
   messageParts: {
     gap: spacing.sm
   },
+  messageCopyAction: {
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceMuted
+  },
+  messageCopyActionPressed: {
+    opacity: 0.72
+  },
+  messageCopyActionText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: fontWeights.action
+  },
+  messageCopyActionTextDone: {
+    color: colors.success
+  },
   messagePartSpacing: {
     marginTop: spacing.xs
   },

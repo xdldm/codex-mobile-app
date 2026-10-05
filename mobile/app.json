@@ -11,16 +11,24 @@
     "experiments": {
       "typedRoutes": true
     },
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "internal.codex.mobile"
+      "bundleIdentifier": "internal.codex.mobile",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "package": "internal.codex.mobile",
-      "permissions": ["INTERNET"]
+      "permissions": ["INTERNET"],
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E3A47"
+      }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
     }
   }
 }

@@ -1,0 +1,4 @@
+<resources>
+  <!-- Flat mid-tone of the icon gradient, used behind the adaptive foreground. -->
+  <color name="launcher_background">#0E3A47</color>
+</resources>

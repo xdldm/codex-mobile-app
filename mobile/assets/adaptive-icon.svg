@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Codex Mobile">
+  <title>Codex Mobile foreground</title>
+  <!--
+    Transparent foreground for Android adaptive icons and the splash mark.
+    Same geometry as icon.svg without the background, scaled to 75% so the mark
+    stays inside the central 66% safe zone that launcher masks crop to.
+  -->
+  <g transform="translate(512 512) scale(0.75) translate(-512 -512)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="101">
+      <path d="M250 310 L480 512 L250 714" stroke="#5BD1E6"/>
+      <path d="M562 714 H774" stroke="#EAF7FB"/>
+    </g>
+  </g>
+</svg>

@@ -95,6 +95,7 @@ npm run web
 - Timeline estruturada de atividade, ferramentas e aprovacoes human-in-the-loop, com cancelamento.
 - Mentions estruturadas no composer (`$app` / `$skill` / `$mcp`) e navegacao de recursos MCP.
 - Anexos no composer: escolhe um arquivo pelo seletor do sistema, le em base64, envia para `POST /v1/uploads` e anexa o caminho ao run (imagens vao como imagem; o resto como referencia de caminho).
+- Copiar resposta: botao `Copy` (ou toque longo) no balao do Codex copia o texto e o codigo da resposta pelo `expo-clipboard`.
 - Limites de conta e presets de modo de execucao (sandbox, approval policy, network).
 - Settings para URL do Bridge e defaults do Codex.
 
@@ -107,3 +108,14 @@ npm run web
 - `src/domain/`: tipos e logica de dominio (tipos do bridge, mentions, partes de mensagem, parsing de historico, opcoes do composer).
 - `src/api/`: cliente HTTP/SSE.
 - `src/config/`, `src/storage/`, `src/theme/`, `src/utils/`: build config, preferencias, tema e utilidades.
+- `assets/`: fontes do icone (`icon.svg`, `adaptive-icon.svg`, `splash-icon.svg`) e os PNGs consumidos pelo `app.json`. O projeto Android ja vem com os mipmaps e o icone adaptativo em `android/app/src/main/res`.
+
+## Icones
+
+Os PNGs em `assets/` e os recursos em `android/app/src/main/res/` sao gerados a partir dos SVG em `assets/` — qualquer rasterizador de SVG serve (`rsvg-convert`, Inkscape, `sharp`).
+
+- `icon.svg`: icone base (iOS, favicon e icones legados do Android).
+- `adaptive-icon.svg`: primeiro plano do icone adaptativo; a marca fica a 75% para caber na zona segura de 66% recortada pelas mascaras do Android.
+- `splash-icon.svg`: marca do splash nas cores do tema claro (o fundo do splash e branco).
+
+Tamanhos usados: 1024 para `icon.png` e `adaptive-icon.png`, 48 para `favicon.png`, 48/72/96/144/192 para `mipmap-*/ic_launcher.png` e `ic_launcher_round.png`, 108/162/216/324/432 para `mipmap-*/ic_launcher_foreground.png`, e 288/432/576/864/1152 para `drawable-*/splashscreen_logo.png`.

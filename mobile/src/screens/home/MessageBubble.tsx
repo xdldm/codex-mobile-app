@@ -6,17 +6,20 @@ import {
   ChevronRight,
   Clock3,
   Code2,
+  Copy,
   FileCode2,
   ShieldCheck,
   Terminal,
   X
 } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Modal, PanResponder, Pressable, ScrollView, Text, View } from "react-native";
 
 import { MarkdownText } from "../../components/MarkdownText";
 import type { ChatMessage, ChatMessagePart, PendingApproval } from "../../domain/bridge";
+import { messageTextFromParts } from "../../domain/chatMessageParts";
 import { colors } from "../../theme/colors";
 import { styles } from "./styles";
 
@@ -29,10 +32,19 @@ export function MessageBubble({
 }) {
   const isUser = message.role === "user";
   const parts = messageParts(message);
+  const copyText = useMemo(
+    () => messageTextFromParts(parts).trim() || message.text.trim(),
+    [parts, message.text]
+  );
+  const { copied, copy } = useCopyFeedback();
 
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
-      <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+      <Pressable
+        delayLongPress={350}
+        onLongPress={copyText ? () => void copy(copyText) : undefined}
+        style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}
+      >
         <View style={styles.messageHeader}>
           <Text style={[styles.messageRole, isUser && styles.userRole]}>
             {isUser ? "You" : "Codex"}
@@ -64,9 +76,61 @@ export function MessageBubble({
             <Text style={styles.workingText}>Working...</Text>
           </View>
         )}
-      </View>
+        {!isUser && copyText ? (
+          <MessageCopyAction copied={copied} onPress={() => void copy(copyText)} />
+        ) : null}
+      </Pressable>
     </View>
   );
+}
+
+function MessageCopyAction({ copied, onPress }: { copied: boolean; onPress: () => void }) {
+  const Icon = copied ? Check : Copy;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={copied ? "Response copied" : "Copy response"}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.messageCopyAction, pressed && styles.messageCopyActionPressed]}
+    >
+      <Icon size={13} color={copied ? colors.success : colors.textMuted} strokeWidth={2.6} />
+      <Text style={[styles.messageCopyActionText, copied && styles.messageCopyActionTextDone]}>
+        {copied ? "Copied" : "Copy"}
+      </Text>
+    </Pressable>
+  );
+}
+
+function useCopyFeedback() {
+  const [copied, setCopied] = useState(false);
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timeout.current) {
+        clearTimeout(timeout.current);
+      }
+    },
+    []
+  );
+
+  const copy = useCallback(async (text: string) => {
+    const value = text.trim();
+    if (!value) {
+      return;
+    }
+
+    await Clipboard.setStringAsync(value);
+    setCopied(true);
+    if (timeout.current) {
+      clearTimeout(timeout.current);
+    }
+    timeout.current = setTimeout(() => setCopied(false), 1600);
+  }, []);
+
+  return { copied, copy };
 }
 
 function UserMessageErrorDrawer({ error }: { error: string }) {

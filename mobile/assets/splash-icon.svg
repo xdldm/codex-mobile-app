@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Codex Mobile">
+  <title>Codex Mobile splash mark</title>
+  <!--
+    Splash mark. The Android splash background is white, so this variant uses
+    the light-theme palette instead of the icon's cyan-on-dark colors.
+  -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="101">
+    <path d="M250 310 L480 512 L250 714" stroke="#176B87"/>
+    <path d="M562 714 H774" stroke="#101828"/>
+  </g>
+</svg>
