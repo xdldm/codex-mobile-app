@@ -35,6 +35,8 @@ id_ecdsa*
 *.swp
 
 config/workspaces.allowlist
+# Provider API keys stay on the host; never commit them.
+config/*.key
 
 .DS_Store
 Thumbs.db
