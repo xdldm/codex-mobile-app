@@ -326,6 +326,18 @@ export function HomeScreen() {
           >
             <Menu size={20} color={colors.text} />
           </Pressable>
+          <View style={styles.headerActions}>
+            <IconAction
+              icon={RefreshCcw}
+              label={t("common.refresh")}
+              onPress={() => void bridge.refreshAll()}
+            />
+            <IconAction
+              icon={MessageSquarePlus}
+              label={t("home.newConversation")}
+              onPress={() => void bridge.createNewThread()}
+            />
+          </View>
         </View>
 
         <LimitsModal visible={limitsVisible} onClose={() => setLimitsVisible(false)} />

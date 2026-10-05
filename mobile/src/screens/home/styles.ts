@@ -25,6 +25,12 @@ export const styles = StyleSheet.create({
     opacity: 0.78,
     transform: [{ scale: 0.98 }]
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginLeft: "auto"
+  },
   jumpToBottom: {
     position: "absolute",
     right: spacing.lg,
