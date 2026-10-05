@@ -8,7 +8,8 @@ on:
       - main
 
 permissions:
-  contents: read
+  # write: the android job publishes the APK as a release asset.
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -115,3 +116,18 @@ jobs:
           path: mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # A release asset is a direct .apk download, so installing no longer means
+      # downloading a zip and extracting it on the phone.
+      - name: Publish APK release
+        working-directory: mobile/android
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(grep -oP 'versionName "\K[^"]+' app/build.gradle)
+          tag="v${version}"
+          gh release view "$tag" >/dev/null 2>&1 || \
+            gh release create "$tag" --title "Codex Mobile ${version}" \
+              --notes "APK built from ${GITHUB_SHA::7} (arm64-v8a, debug-signed)."
+          gh release upload "$tag" app/build/outputs/apk/release/*.apk --clobber
