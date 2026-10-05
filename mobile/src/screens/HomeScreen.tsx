@@ -115,19 +115,40 @@ export function HomeScreen() {
     return `${last.id}:${last.text.length}:${last.pending ? "p" : "d"}:${partMarker ?? ""}`;
   }, [bridge.messages]);
 
-  const scrollToBottom = useCallback((animated: boolean) => {
-    // Markdown blocks (code fences, images) keep growing for a moment after the
-    // first layout, so retry: the first pass alone lands short of the bottom.
-    const attempt = (index: number) => {
-      requestAnimationFrame(() => {
-        messageListRef.current?.scrollToEnd({ animated: animated && index === 0 });
-      });
-      if (index < 2) {
-        setTimeout(() => attempt(index + 1), 160);
-      }
-    };
-    attempt(0);
+  // A transcript lays out in several passes (markdown, code blocks, images), so
+  // a single scrollToEnd lands short. Keep pinning on a short cadence and let
+  // the content size decide when to stop: every growth restarts the cadence,
+  // and it gives up a couple of seconds after the list stops growing.
+  const lastContentHeight = useRef(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settleTicks = useRef(0);
+
+  const settleBottom = useCallback(() => {
+    if (settleTimer.current) {
+      clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    }
+    if (!stickToBottom.current) {
+      return;
+    }
+
+    messageListRef.current?.scrollToEnd({ animated: false });
+
+    settleTicks.current += 1;
+    if (settleTicks.current > 15) {
+      return;
+    }
+    settleTimer.current = setTimeout(settleBottom, 150);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current) {
+        clearTimeout(settleTimer.current);
+      }
+    },
+    []
+  );
 
   // A new conversation always starts pinned to the newest message, even if the
   // user had scrolled up in the previous one.
@@ -151,8 +172,8 @@ export function HomeScreen() {
       return;
     }
 
-    scrollToBottom(true);
-  }, [bridge.messages.length, latestMessageMarker, scrollToBottom]);
+    settleBottom();
+  }, [bridge.messages.length, latestMessageMarker, settleBottom]);
 
   // Coming back from the background has to land on the newest message: the list
   // was detached from the layout while the app was away and stopped following.
@@ -164,12 +185,13 @@ export function HomeScreen() {
 
       pendingBottomScroll.current = true;
       if (stickToBottom.current) {
-        scrollToBottom(false);
+        settleTicks.current = 0;
+        settleBottom();
       }
     });
 
     return () => subscription.remove();
-  }, [scrollToBottom]);
+  }, [settleBottom]);
 
   const applyStickyBottom = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -335,14 +357,12 @@ export function HomeScreen() {
           onMomentumScrollEnd={handleMomentumScrollEnd}
           scrollEventThrottle={16}
           onContentSizeChange={() => {
-            // Only correct the position when the layout changed out from under
-            // us (thread switch, resume, first measure); streamed output is
-            // followed by the effect above.
-            if (!stickToBottom.current || !pendingBottomScroll.current) {
+            if (!stickToBottom.current) {
               return;
             }
-            pendingBottomScroll.current = false;
-            scrollToBottom(false);
+            // Growth restarts the pin cadence; a stable height lets it expire.
+            settleTicks.current = 0;
+            settleBottom();
           }}
           ListEmptyComponent={
             <EmptyChat
