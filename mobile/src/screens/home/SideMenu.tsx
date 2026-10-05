@@ -156,7 +156,9 @@ function MenuRow({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    flexDirection: "row"
+    // Children are declared backdrop-first, so reverse the row to pin the panel
+    // to the left edge of the screen.
+    flexDirection: "row-reverse"
   },
   backdrop: {
     flex: 1,
