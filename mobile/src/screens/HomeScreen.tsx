@@ -11,9 +11,10 @@ import {
   Square,
   X
 } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -22,7 +23,9 @@ import {
   ScrollView,
   Text,
   TextInput,
-  View
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -43,6 +46,9 @@ import { MentionPalette } from "./home/MentionPalette";
 import { MessageBubble } from "./home/MessageBubble";
 import { styles } from "./home/styles";
 
+// How close to the bottom still counts as "following the conversation".
+const BOTTOM_STICKY_THRESHOLD = 64;
+
 export function HomeScreen() {
   const bridge = useBridge();
   const insets = useSafeAreaInsets();
@@ -54,6 +60,12 @@ export function HomeScreen() {
   const [folderPickerVisible, setFolderPickerVisible] = useState(false);
   const messageListRef = useRef<FlatList<ChatMessage> | null>(null);
   const mentionLoadRequested = useRef(false);
+  // Sticky bottom: follow new output only while the user is already at the
+  // bottom, so reading earlier messages is not interrupted by auto-scrolling.
+  const stickToBottom = useRef(true);
+  // Set whenever the list must land on the newest message after a layout change
+  // (thread switch, app resumed, list re-measured).
+  const pendingBottomScroll = useRef(true);
   const selectedModel = useMemo(
     () => bridge.models.find((model) => model.id === bridge.selectedModelId) ?? null,
     [bridge.models, bridge.selectedModelId]
@@ -98,16 +110,86 @@ export function HomeScreen() {
     return `${last.id}:${last.text.length}:${last.pending ? "p" : "d"}:${partMarker ?? ""}`;
   }, [bridge.messages]);
 
+  const scrollToBottom = useCallback((animated: boolean) => {
+    requestAnimationFrame(() => {
+      messageListRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  // A new conversation always starts pinned to the newest message, even if the
+  // user had scrolled up in the previous one.
   useEffect(() => {
-    if (bridge.messages.length === 0) {
+    stickToBottom.current = true;
+    pendingBottomScroll.current = true;
+  }, [bridge.selectedThread?.id, bridge.selectedWorkspace?.path]);
+
+  // Sending re-pins the list: the answer is what the user wants to watch.
+  const lastMessage = bridge.messages[bridge.messages.length - 1];
+  const lastMessageId = lastMessage?.id ?? null;
+  const lastMessageRole = lastMessage?.role ?? null;
+  useEffect(() => {
+    if (lastMessageRole === "user") {
+      stickToBottom.current = true;
+    }
+  }, [lastMessageId, lastMessageRole]);
+
+  useEffect(() => {
+    if (bridge.messages.length === 0 || !stickToBottom.current) {
       return;
     }
 
-    const frame = requestAnimationFrame(() => {
-      messageListRef.current?.scrollToEnd({ animated: true });
+    scrollToBottom(true);
+  }, [bridge.messages.length, latestMessageMarker, scrollToBottom]);
+
+  // Coming back from the background has to land on the newest message: the list
+  // was detached from the layout while the app was away and stopped following.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") {
+        return;
+      }
+
+      pendingBottomScroll.current = true;
+      if (stickToBottom.current) {
+        scrollToBottom(false);
+      }
     });
-    return () => cancelAnimationFrame(frame);
-  }, [bridge.messages.length, latestMessageMarker]);
+
+    return () => subscription.remove();
+  }, [scrollToBottom]);
+
+  const applyStickyBottom = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    stickToBottom.current = distanceFromBottom <= BOTTOM_STICKY_THRESHOLD;
+    if (stickToBottom.current) {
+      pendingBottomScroll.current = false;
+    }
+  }, []);
+
+  const userScrolling = useRef(false);
+  const handleScrollBegin = useCallback(() => {
+    userScrolling.current = true;
+  }, []);
+  const handleMessageScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Only the user's gestures decide whether the list keeps following the
+      // conversation; offset changes we caused ourselves must not flip it.
+      if (userScrolling.current) {
+        applyStickyBottom(event);
+      }
+    },
+    [applyStickyBottom]
+  );
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // A fling keeps moving after the finger lifts, so judge the position it
+      // actually settled on.
+      applyStickyBottom(event);
+      userScrolling.current = false;
+    },
+    [applyStickyBottom]
+  );
 
   useEffect(() => {
     if (Platform.OS !== "android") {
@@ -256,6 +338,21 @@ export function HomeScreen() {
           )}
           contentContainerStyle={styles.messageList}
           style={styles.messages}
+          onScroll={handleMessageScroll}
+          onScrollBeginDrag={handleScrollBegin}
+          onMomentumScrollBegin={handleScrollBegin}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          scrollEventThrottle={16}
+          onContentSizeChange={() => {
+            // Only correct the position when the layout changed out from under
+            // us (thread switch, resume, first measure); streamed output is
+            // followed by the effect above.
+            if (!stickToBottom.current || !pendingBottomScroll.current) {
+              return;
+            }
+            pendingBottomScroll.current = false;
+            scrollToBottom(false);
+          }}
           ListEmptyComponent={
             <EmptyChat
               isLoading={bridge.isLoadingThreadContent}
