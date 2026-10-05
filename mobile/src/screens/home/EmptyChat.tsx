@@ -1,5 +1,6 @@
 import { ActivityIndicator, Text, View } from "react-native";
 
+import { useTranslation } from "../../i18n/useTranslation";
 import { colors } from "../../theme/colors";
 import { styles } from "./styles";
 
@@ -12,14 +13,19 @@ export function EmptyChat({
   hasSelectedThread: boolean;
   hasWorkspace: boolean;
 }) {
-  const title = isLoading ? "Loading conversation" : hasSelectedThread ? "No readable messages" : "New conversation";
-  const text = isLoading
-    ? "Fetching this thread history."
+  const t = useTranslation();
+  const title = isLoading
+    ? t("empty.loading")
     : hasSelectedThread
-      ? "This thread opened, but no text turns were returned by the bridge."
+      ? t("empty.noMessages")
+      : t("empty.newConversation");
+  const text = isLoading
+    ? t("empty.fetchingHistory")
+    : hasSelectedThread
+      ? t("empty.noTurns")
       : hasWorkspace
-        ? "Send a message to create this conversation."
-        : "Choose a repository and start a conversation.";
+        ? t("empty.sendToCreate")
+        : t("empty.chooseRepository");
 
   return (
     <View style={styles.empty}>

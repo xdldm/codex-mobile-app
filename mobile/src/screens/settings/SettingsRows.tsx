@@ -17,12 +17,14 @@ export function OptionGrid({
   title,
   options,
   selected,
-  onSelect
+  onSelect,
+  labels
 }: {
   title: string;
   options: string[];
   selected: string;
   onSelect: (value: string) => void;
+  labels?: Record<string, string>;
 }) {
   return (
     <View style={styles.optionBlock}>
@@ -35,7 +37,7 @@ export function OptionGrid({
             style={[styles.option, selected === option && styles.optionActive]}
           >
             <Text style={[styles.optionText, selected === option && styles.optionTextActive]}>
-              {option}
+              {labels?.[option] ?? option}
             </Text>
           </Pressable>
         ))}

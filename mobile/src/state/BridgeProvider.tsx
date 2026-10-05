@@ -59,6 +59,13 @@ import {
 } from "../domain/chatMessageParts";
 import { pickAttachableRun } from "../domain/activeRun";
 import { messagesFromThread } from "../domain/threadHistory";
+import {
+  createTranslator,
+  resolveLanguage,
+  type Language,
+  type LanguagePreference,
+  type Translator
+} from "../i18n";
 import { loadPreferences, savePreferences } from "../storage/preferences";
 import { asNumber, asString, createId, errorMessage, lowerString, normalizeUrl, trimMiddle } from "../utils/value";
 
@@ -81,6 +88,7 @@ type BridgeContextValue = {
   selectedWorkspace: WorkspaceEntry | null;
   selectedThread: BridgeThread | null;
   selectedModelId: string | null;
+  language: Language;
   reasoningEffort: ReasoningEffort;
   approvalPolicy: ApprovalPolicy;
   sandboxMode: SandboxMode;
@@ -113,6 +121,7 @@ type BridgeContextValue = {
   setSandboxMode: (mode: SandboxMode) => void;
   setServiceTier: (tier: string | null) => void;
   setNetworkAccessEnabled: (enabled: boolean) => void;
+  setLanguage: (preference: LanguagePreference) => void;
   setExecutionSettings: (
     settings: Partial<
       Pick<
@@ -232,6 +241,13 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   // resume exactly where it stopped instead of replaying into a fresh bubble.
   const lastEventSeqByRun = useRef(new Map<string, number>());
   const assistantMessageIdByRun = useRef(new Map<string, string>());
+  const language = useMemo(() => resolveLanguage(preferences.language), [preferences.language]);
+  // Callbacks created once (event handlers, effects) must not capture a stale
+  // language, so they read the translator through a ref.
+  const translatorRef = useRef<Translator>(createTranslator(language));
+  useEffect(() => {
+    translatorRef.current = createTranslator(language);
+  }, [language]);
   const attachedRunId = useRef<string | null>(null);
   const detachedAbortControllers = useRef(new Set<AbortController>());
   const buildConfig = useMemo(() => getCodexMobileBuildConfig(), []);
@@ -992,7 +1008,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
 
   const createNewThread = useCallback(async () => {
     if (!selectedWorkspace) {
-      setError("No repository selected.");
+      setError(translatorRef.current("provider.noRepositorySelected"));
       return;
     }
 
@@ -1010,7 +1026,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
 
   const createPersistedThread = useCallback(async () => {
     if (!selectedWorkspace) {
-      setError("No repository selected.");
+      setError(translatorRef.current("provider.noRepositorySelected"));
       return null;
     }
 
@@ -1019,7 +1035,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
 
     try {
       const response = await client.createThread({
-        title: "New mobile conversation",
+        title: translatorRef.current("activity.newThreadTitle"),
         workspace: selectedWorkspace.path
       });
       if (!isCurrentThreadContentRequest(requestId)) {
@@ -1138,7 +1154,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
                 current,
                 userMessage.id,
                 "failed",
-                "Could not create conversation."
+                translatorRef.current("provider.createConversationFailed")
               )
             );
           }
@@ -1193,7 +1209,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
             current,
             cleanMessage,
             runFailed ? "failed" : "sent",
-            runFailed ? "Run failed." : undefined
+            runFailed ? translatorRef.current("provider.runFailed") : undefined
           )
         );
       } catch (caught) {
@@ -1278,7 +1294,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       setIsRunning(true);
       addOrUpdateActivity({
         id: runId ?? createId("run"),
-        title: "Run started",
+        title: translatorRef.current("activity.runStarted"),
         status: "running"
       });
       return;
@@ -1304,7 +1320,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       clearAssistantProcessing(assistantMessageId);
       const activity = {
         id: asString(data.item_id) ?? createId("tool"),
-        title: toolTitle(data),
+        title: toolTitle(data, translatorRef.current),
         detail: toolDetail(data),
         status: "running",
         toolDetails: toolDetails(data)
@@ -1317,7 +1333,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     if (event.event === "tool_end") {
       const activity = {
         id: asString(data.item_id) ?? createId("tool"),
-        title: toolTitle(data),
+        title: toolTitle(data, translatorRef.current),
         detail: toolDetail(data),
         status: isFailedStatus(data.status) ? "failed" : "done",
         toolDetails: toolDetails(data)
@@ -1331,7 +1347,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     if (event.event === "command_output") {
       const activity = {
         id: asString(data.item_id) ?? createId("command"),
-        title: "Command output",
+        title: translatorRef.current("activity.commandOutput"),
         detail: trimMiddle(asString(data.output) ?? "", 180),
         status: "running",
         toolDetails: toolDetails(data)
@@ -1351,7 +1367,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       if (text) {
         const activity = {
           id: asString(data.item_id) ?? createId("reasoning"),
-          title: "Reasoning",
+          title: translatorRef.current("activity.reasoning"),
           detail: trimMiddle(text, 180),
           status: "info"
         } as const;
@@ -1369,7 +1385,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       ]);
       addOrUpdateActivity({
         id: approval.approval_id,
-        title: "Approval pending",
+        title: translatorRef.current("activity.approvalPending"),
         detail: approvalSummary(approval),
         status: "running"
       });
@@ -1380,7 +1396,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     if (event.event === "file_change") {
       const activity = {
         id: asString(data.item_id) ?? createId("file"),
-        title: "File change",
+        title: translatorRef.current("activity.fileChange"),
         detail: asString(data.status) ?? undefined,
         status: isFailedStatus(data.status) ? "failed" : "done",
         toolDetails: toolDetails(data)
@@ -1393,8 +1409,8 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     if (event.event === "todo_list") {
       const activity = {
         id: asString(data.item_id) ?? createId("todo"),
-        title: "Plan updated",
-        detail: "Task list changed",
+        title: translatorRef.current("activity.planUpdated"),
+        detail: translatorRef.current("activity.planDetail"),
         status: "info"
       } as const;
       addOrUpdateActivity(activity);
@@ -1403,7 +1419,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     }
 
     if (event.event === "error") {
-      const message = asString(data.message) ?? "Stream error.";
+      const message = asString(data.message) ?? translatorRef.current("provider.streamError");
       setError(message);
       if (userMessageId) {
         setMessages((current) => setMessageDeliveryStatus(current, userMessageId, "failed", message));
@@ -1422,7 +1438,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
             current,
             userMessageId,
             isFailedStatus(status) ? "failed" : "sent",
-            isFailedStatus(status) ? status ?? "Run failed." : undefined
+            isFailedStatus(status) ? status ?? translatorRef.current("provider.runFailed") : undefined
           )
         );
       }
@@ -1443,7 +1459,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       attachedRunId.current = null;
       addOrUpdateActivity({
         id: runId ?? createId("done"),
-        title: "Run finished",
+        title: translatorRef.current("activity.runFinished"),
         detail: asString(data.status) ?? "completed",
         status: asString(data.status) === "failed" ? "failed" : "done"
       });
@@ -1595,7 +1611,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
         item.id === messageId
           ? upsertActivityPart(item, {
               id: PROCESSING_RESULTS_ACTIVITY_ID,
-              title: "Processing results",
+              title: translatorRef.current("activity.processingResults"),
               detail: "Preparing response",
               status: "running"
             })
@@ -1662,7 +1678,12 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     activeAbortController.current?.abort();
     if (activeUserMessageId.current) {
       setMessages((current) =>
-        setMessageDeliveryStatus(current, activeUserMessageId.current, "failed", "Cancelled.")
+        setMessageDeliveryStatus(
+          current,
+          activeUserMessageId.current,
+          "failed",
+          translatorRef.current("provider.cancelled")
+        )
       );
     }
     if (threadId && runId) {
@@ -1688,7 +1709,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       markApprovalAnswered(approval.approval_id, decision);
       addOrUpdateActivity({
         id: approval.approval_id,
-        title: "Approval answered",
+        title: translatorRef.current("activity.approvalAnswered"),
         detail: decision,
         status: "done"
       });
@@ -1739,6 +1760,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       selectedWorkspace,
       selectedThread,
       selectedModelId: preferences.selectedModelId ?? null,
+      language,
       reasoningEffort: preferences.reasoningEffort,
       approvalPolicy: preferences.approvalPolicy,
       sandboxMode: preferences.sandboxMode,
@@ -1771,6 +1793,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       setSandboxMode: (sandboxMode) => updatePreferences({ sandboxMode }),
       setServiceTier: (serviceTier) => updatePreferences({ serviceTier }),
       setNetworkAccessEnabled: (networkAccessEnabled) => updatePreferences({ networkAccessEnabled }),
+      setLanguage: (language) => updatePreferences({ language }),
       setExecutionSettings: updatePreferences,
       refreshAll,
       refreshAccount,
@@ -1826,6 +1849,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       isRefreshingMcp,
       isRefreshing,
       isUploadingAttachment,
+      language,
       listDirectoryChildren,
       listFilesystemRoots,
       isRunning,
@@ -1989,18 +2013,18 @@ function isFailedStatus(status: unknown) {
   return normalized === "failed" || normalized === "error" || normalized === "errored";
 }
 
-function toolTitle(data: Record<string, unknown>) {
+function toolTitle(data: Record<string, unknown>, t: Translator) {
   const kind = asString(data.kind);
   if (kind === "command_execution") {
-    return "Command";
+    return t("tool.command");
   }
   if (kind === "webSearch" || kind === "web_search") {
-    return "Web search";
+    return t("tool.webSearch");
   }
   if (kind === "mcpToolCall" || kind === "mcp_tool_call") {
     return asString(data.tool) ?? "MCP tool";
   }
-  return kind ?? "Tool";
+  return kind ?? t("tool.fallbackName");
 }
 
 function toolDetail(data: Record<string, unknown>) {

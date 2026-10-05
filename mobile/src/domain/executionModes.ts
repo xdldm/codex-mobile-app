@@ -1,8 +1,9 @@
 import type { ApprovalPolicy, BridgePreferences, SandboxMode } from "./bridge";
+import type { TranslationKey } from "../i18n";
 
 export type ExecutionPreset = {
   id: "read-only" | "workspace" | "workspace-online" | "full-assisted" | "full-auto";
-  label: string;
+  labelKey: TranslationKey;
   detail: string;
   sandboxMode: SandboxMode;
   approvalPolicy: ApprovalPolicy;
@@ -17,7 +18,7 @@ type ExecutionSettings = Pick<
 export const EXECUTION_PRESETS: ExecutionPreset[] = [
   {
     id: "read-only",
-    label: "Read only",
+    labelKey: "execution.readOnly",
     detail: "read-only / on-request",
     sandboxMode: "read-only",
     approvalPolicy: "on-request",
@@ -25,7 +26,7 @@ export const EXECUTION_PRESETS: ExecutionPreset[] = [
   },
   {
     id: "workspace",
-    label: "Workspace",
+    labelKey: "execution.workspace",
     detail: "workspace-write / on-request",
     sandboxMode: "workspace-write",
     approvalPolicy: "on-request",
@@ -33,7 +34,7 @@ export const EXECUTION_PRESETS: ExecutionPreset[] = [
   },
   {
     id: "workspace-online",
-    label: "Workspace online",
+    labelKey: "execution.workspaceOnline",
     detail: "workspace-write / network",
     sandboxMode: "workspace-write",
     approvalPolicy: "on-request",
@@ -41,7 +42,7 @@ export const EXECUTION_PRESETS: ExecutionPreset[] = [
   },
   {
     id: "full-assisted",
-    label: "Full assisted",
+    labelKey: "execution.fullAssisted",
     detail: "danger-full-access / on-request",
     sandboxMode: "danger-full-access",
     approvalPolicy: "on-request",
@@ -49,7 +50,7 @@ export const EXECUTION_PRESETS: ExecutionPreset[] = [
   },
   {
     id: "full-auto",
-    label: "Full direct",
+    labelKey: "execution.fullDirect",
     detail: "danger-full-access / never",
     sandboxMode: "danger-full-access",
     approvalPolicy: "never",

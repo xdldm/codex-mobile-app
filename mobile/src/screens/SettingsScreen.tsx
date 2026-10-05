@@ -15,6 +15,8 @@ import {
   findExecutionPreset,
   sandboxModes
 } from "../domain/executionModes";
+import { useTranslation } from "../i18n/useTranslation";
+import type { LanguagePreference, Translator } from "../i18n";
 import { useBridge } from "../state/BridgeProvider";
 import { colors, spacing } from "../theme/colors";
 import { McpServerRow } from "./settings/McpServerRow";
@@ -23,6 +25,7 @@ import { styles } from "./settings/styles";
 
 export function SettingsScreen() {
   const bridge = useBridge();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const [baseUrlDraft, setBaseUrlDraft] = useState(bridge.baseUrl);
   const [expandedMcpServer, setExpandedMcpServer] = useState<string | null>(null);
@@ -56,28 +59,43 @@ export function SettingsScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={styles.title}>{t("settings.title")}</Text>
           <Text numberOfLines={1} style={styles.subtitle}>
             {bridge.health?.active_transport ?? "bridge"}
           </Text>
         </View>
         <IconAction
           icon={Save}
-          label="Save URL"
+          label={t("settings.saveUrl")}
           variant="filled"
           onPress={() => {
             bridge.setBaseUrl(baseUrlDraft);
             void bridge.refreshAll();
           }}
         />
-        <IconAction icon={X} label="Close" onPress={() => router.back()} />
+        <IconAction icon={X} label={t("common.close")} onPress={() => router.back()} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: spacing.lg + insets.bottom }]}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Execution Mode</Text>
+          <Text style={styles.sectionTitle}>{t("language.title")}</Text>
+          <OptionGrid
+            title={t("language.title")}
+            options={["system", "en", "zh"]}
+            selected={bridge.preferences.language}
+            labels={{
+              system: t("language.system"),
+              en: t("language.en"),
+              zh: t("language.zh")
+            }}
+            onSelect={(value) => bridge.setLanguage(value as LanguagePreference)}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t("settings.executionMode")}</Text>
           <InfoRow
-            label={activeExecutionPreset?.label ?? "Custom"}
+            label={activeExecutionPreset ? t(activeExecutionPreset.labelKey) : t("common.custom")}
             value={executionDetail({
               sandboxMode: bridge.sandboxMode,
               approvalPolicy: bridge.approvalPolicy,
@@ -107,7 +125,7 @@ export function SettingsScreen() {
                     activeExecutionPreset?.id === preset.id && styles.presetLabelActive
                   ]}
                 >
-                  {preset.label}
+                  {t(preset.labelKey)}
                 </Text>
                 <Text
                   numberOfLines={2}
@@ -124,7 +142,7 @@ export function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bridge</Text>
+          <Text style={styles.sectionTitle}>{t("settings.bridge")}</Text>
           <TextInput
             value={baseUrlDraft}
             onChangeText={setBaseUrlDraft}
@@ -132,10 +150,10 @@ export function SettingsScreen() {
             autoCorrect={false}
             style={styles.input}
           />
-          <InfoRow label="Status" value={bridge.health?.status ?? "no response"} />
-          <InfoRow label="Auth" value={bridge.health?.auth ?? "-"} />
-          <InfoRow label="CLI" value={bridge.health?.codex_cli_version ?? "-"} />
-          <InfoRow label="Allowlist" value={bridge.allowlistFile ?? "-"} />
+          <InfoRow label={t("common.status")} value={bridge.health?.status ?? t("settings.noResponse")} />
+          <InfoRow label={t("common.auth")} value={bridge.health?.auth ?? "-"} />
+          <InfoRow label={t("settings.cli")} value={bridge.health?.codex_cli_version ?? "-"} />
+          <InfoRow label={t("common.allowlist")} value={bridge.allowlistFile ?? "-"} />
         </View>
 
         <View style={styles.section}>
@@ -144,19 +162,19 @@ export function SettingsScreen() {
             {bridge.isRefreshingMcp ? <ActivityIndicator size="small" color={colors.accent} /> : null}
             <IconAction
               icon={RefreshCcw}
-              label="Refresh MCP"
+              label={t("settings.refreshMcp")}
               disabled={!bridge.capabilities.mcp?.list || bridge.isRefreshingMcp}
               onPress={() => void bridge.refreshMcpServers()}
             />
             <IconAction
               icon={Database}
-              label="Reload MCP"
+              label={t("settings.reloadMcp")}
               disabled={!bridge.capabilities.mcp?.reload || bridge.isRefreshingMcp}
               onPress={() => void bridge.reloadMcpServers()}
             />
           </View>
           <InfoRow
-            label="Capability"
+            label={t("settings.capability")}
             value={
               bridge.capabilities.mcp?.list
                 ? `${bridge.mcpServers.length} server(s)`
@@ -181,56 +199,59 @@ export function SettingsScreen() {
           ))}
           {bridge.mcpResource ? (
             <View style={styles.mcpReadout}>
-              <Text style={styles.optionTitle}>Resource content</Text>
+              <Text style={styles.optionTitle}>{t("settings.resourceContent")}</Text>
               <Text numberOfLines={10} style={styles.mcpReadoutText}>
-                {mcpResourceText(bridge.mcpResource.contents)}
+                {mcpResourceText(bridge.mcpResource.contents, t)}
               </Text>
             </View>
           ) : null}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Build</Text>
-          <InfoRow label="Gateway" value={bridge.buildConfig.gateway} />
-          <InfoRow label="Build default" value={bridge.buildConfig.apiBaseUrl} />
+          <Text style={styles.sectionTitle}>{t("settings.build")}</Text>
+          <InfoRow label={t("settings.gateway")} value={bridge.buildConfig.gateway} />
+          <InfoRow label={t("settings.buildDefault")} value={bridge.buildConfig.apiBaseUrl} />
           <InfoRow
-            label="Override"
+            label={t("settings.override")}
             value={bridge.buildConfig.bridgeUrlOverride ?? "-"}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Advanced</Text>
+          <Text style={styles.sectionTitle}>{t("settings.advanced")}</Text>
           <OptionGrid
-            title="Approval"
+            title={t("settings.approval")}
             options={approvalPolicies}
             selected={bridge.approvalPolicy}
             onSelect={(value) => bridge.setApprovalPolicy(value as ApprovalPolicy)}
           />
           <OptionGrid
-            title="Sandbox"
+            title={t("settings.sandbox")}
             options={sandboxModes}
             selected={bridge.sandboxMode}
             onSelect={(value) => bridge.setSandboxMode(value as SandboxMode)}
           />
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Network</Text>
+            <Text style={styles.switchLabel}>{t("settings.network")}</Text>
             <Switch value={bridge.networkAccessEnabled} onValueChange={bridge.setNetworkAccessEnabled} />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Model</Text>
-          <InfoRow label="Current" value={selectedModel?.displayName ?? bridge.selectedModelId ?? "-"} />
+          <Text style={styles.sectionTitle}>{t("settings.model")}</Text>
+          <InfoRow
+            label={t("common.current")}
+            value={selectedModel?.displayName ?? bridge.selectedModelId ?? "-"}
+          />
           <OptionGrid
-            title="Reasoning effort"
+            title={t("settings.reasoningEffort")}
             options={efforts}
             selected={bridge.reasoningEffort}
             onSelect={(value) => bridge.setReasoningEffort(value as ReasoningEffort)}
           />
           {serviceTiers.length > 0 ? (
             <OptionGrid
-              title="Service tier"
+              title={t("settings.serviceTier")}
               options={["default", ...serviceTiers.map((tier) => tier.id)]}
               selected={bridge.serviceTier ?? "default"}
               onSelect={(value) => bridge.setServiceTier(value === "default" ? null : value)}
@@ -240,12 +261,12 @@ export function SettingsScreen() {
             style={({ pressed }) => [styles.saveDefaults, pressed && styles.pressed]}
             onPress={() => void bridge.saveCodexDefaults()}
           >
-            <Text style={styles.saveDefaultsText}>Save defaults to Codex</Text>
+            <Text style={styles.saveDefaultsText}>{t("settings.saveDefaults")}</Text>
           </Pressable>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Config ativa</Text>
+          <Text style={styles.sectionTitle}>{t("settings.activeConfig")}</Text>
           <InfoRow label="model" value={stringValue(bridge.config?.config.model)} />
           <InfoRow
             label="model_reasoning_effort"
@@ -267,9 +288,12 @@ function stringValue(value: unknown) {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-function mcpResourceText(contents: Array<{ text?: string; blob?: string; uri: string; mimeType?: string | null }>) {
+function mcpResourceText(
+  contents: Array<{ text?: string; blob?: string; uri: string; mimeType?: string | null }>,
+  t: Translator
+) {
   if (contents.length === 0) {
-    return "No content returned.";
+    return t("settings.noContent");
   }
 
   return contents
@@ -278,7 +302,10 @@ function mcpResourceText(contents: Array<{ text?: string; blob?: string; uri: st
         return content.text;
       }
       if (content.blob) {
-        return `[binary ${content.mimeType ?? "content"}] ${content.uri}`;
+        return t("settings.binaryContent", {
+          mime: content.mimeType ?? "content",
+          uri: content.uri
+        });
       }
       return content.uri;
     })

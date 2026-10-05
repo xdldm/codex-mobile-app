@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 
 import { IconAction } from "../../components/IconAction";
 import type { ComposerMention } from "../../domain/mentions";
+import { useTranslation } from "../../i18n/useTranslation";
 import { colors } from "../../theme/colors";
 import { styles } from "./styles";
 
@@ -21,6 +22,7 @@ export function MentionPalette({
   onRefresh: () => void;
   onSelect: (mention: ComposerMention) => void;
 }) {
+  const t = useTranslation();
   const apps = items.filter((item) => item.kind === "app");
   const skills = items.filter((item) => item.kind === "skill");
   const resources = items.filter((item) => item.kind === "mcp_resource");
@@ -32,7 +34,7 @@ export function MentionPalette({
           ${query}
         </Text>
         {loading ? <ActivityIndicator size="small" color={colors.accent} /> : null}
-        <IconAction icon={RefreshCcw} label="Refresh mentions" onPress={onRefresh} />
+        <IconAction icon={RefreshCcw} label={t("mention.refresh")} onPress={onRefresh} />
       </View>
       {error ? (
         <Text numberOfLines={2} style={styles.mentionError}>
@@ -40,11 +42,16 @@ export function MentionPalette({
         </Text>
       ) : null}
       <ScrollView style={styles.mentionList} keyboardShouldPersistTaps="handled">
-        <MentionSection title="Apps" items={apps} icon="app" onSelect={onSelect} />
-        <MentionSection title="Skills" items={skills} icon="skill" onSelect={onSelect} />
-        <MentionSection title="MCP resources" items={resources} icon="mcp" onSelect={onSelect} />
+        <MentionSection title={t("mention.apps")} items={apps} icon="app" onSelect={onSelect} />
+        <MentionSection title={t("mention.skills")} items={skills} icon="skill" onSelect={onSelect} />
+        <MentionSection
+          title={t("mention.mcpResources")}
+          items={resources}
+          icon="mcp"
+          onSelect={onSelect}
+        />
         {!loading && items.length === 0 ? (
-          <Text style={styles.mentionEmpty}>No matches</Text>
+          <Text style={styles.mentionEmpty}>{t("mention.noMatches")}</Text>
         ) : null}
       </ScrollView>
     </View>

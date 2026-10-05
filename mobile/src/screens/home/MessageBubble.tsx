@@ -20,6 +20,8 @@ import { ActivityIndicator, Modal, PanResponder, Pressable, ScrollView, Text, Vi
 import { MarkdownText } from "../../components/MarkdownText";
 import type { ChatMessage, ChatMessagePart, PendingApproval } from "../../domain/bridge";
 import { messageTextFromParts } from "../../domain/chatMessageParts";
+import { useTranslation } from "../../i18n/useTranslation";
+import type { Translator } from "../../i18n";
 import { colors } from "../../theme/colors";
 import { styles } from "./styles";
 
@@ -31,6 +33,7 @@ export function MessageBubble({
   onRespondApproval: (approval: PendingApproval, decision: string) => void;
 }) {
   const isUser = message.role === "user";
+  const t = useTranslation();
   const parts = messageParts(message);
   const copyText = useMemo(
     () => messageTextFromParts(parts).trim() || message.text.trim(),
@@ -43,7 +46,7 @@ export function MessageBubble({
       <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
         <View style={styles.messageHeader}>
           <Text style={[styles.messageRole, isUser && styles.userRole]}>
-            {isUser ? "You" : "Codex"}
+            {isUser ? t("message.you") : "Codex"}
             {message.pending ? " ." : ""}
           </Text>
           {isUser ? <DeliveryStatusIcon status={message.deliveryStatus} /> : null}
@@ -52,7 +55,7 @@ export function MessageBubble({
           <>
             <MarkdownText text={message.text} variant="inverted" />
             {message.deliveryStatus === "failed" ? (
-              <UserMessageErrorDrawer error={message.deliveryError ?? "Message failed."} />
+              <UserMessageErrorDrawer error={message.deliveryError ?? t("message.messageFailed")} />
             ) : null}
           </>
         ) : parts.length > 0 ? (
@@ -69,31 +72,46 @@ export function MessageBubble({
         ) : (
           <View style={styles.workingRow}>
             <ActivityIndicator color={colors.accent} size="small" />
-            <Text style={styles.workingText}>Working...</Text>
+            <Text style={styles.workingText}>{t("message.working")}</Text>
           </View>
         )}
         {!isUser && copyText ? (
-          <MessageCopyAction copied={copied} onPress={() => void copy(copyText)} />
+          <MessageCopyAction
+            copied={copied}
+            label={copied ? t("message.copied") : t("message.copyAll")}
+            accessibilityLabel={copied ? t("message.fullResponseCopied") : t("message.copyFullResponse")}
+            onPress={() => void copy(copyText)}
+          />
         ) : null}
       </View>
     </View>
   );
 }
 
-function MessageCopyAction({ copied, onPress }: { copied: boolean; onPress: () => void }) {
+function MessageCopyAction({
+  copied,
+  label,
+  accessibilityLabel,
+  onPress
+}: {
+  copied: boolean;
+  label: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
   const Icon = copied ? Check : Copy;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={copied ? "Full response copied" : "Copy full response"}
+      accessibilityLabel={accessibilityLabel}
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.messageCopyAction, pressed && styles.messageCopyActionPressed]}
     >
       <Icon size={13} color={copied ? colors.success : colors.textMuted} strokeWidth={2.6} />
       <Text style={[styles.messageCopyActionText, copied && styles.messageCopyActionTextDone]}>
-        {copied ? "Copied" : "Copy all"}
+        {label}
       </Text>
     </Pressable>
   );
@@ -131,6 +149,7 @@ function useCopyFeedback() {
 
 function UserMessageErrorDrawer({ error }: { error: string }) {
   const [expanded, setExpanded] = useState(false);
+  const t = useTranslation();
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -151,7 +170,7 @@ function UserMessageErrorDrawer({ error }: { error: string }) {
     <View style={styles.messageErrorDrawer}>
       <Pressable
         {...panResponder.panHandlers}
-        accessibilityLabel={expanded ? "Hide send error" : "Show send error"}
+        accessibilityLabel={expanded ? t("message.hideSendError") : t("message.showSendError")}
         accessibilityRole="button"
         onPress={() => setExpanded((current) => !current)}
         style={[styles.messageErrorTab, expanded && styles.messageErrorTabOpen]}
@@ -160,7 +179,7 @@ function UserMessageErrorDrawer({ error }: { error: string }) {
       </Pressable>
       {expanded ? (
         <View style={styles.messageErrorPanel}>
-          <Text style={styles.messageErrorTitle}>Send failed</Text>
+          <Text style={styles.messageErrorTitle}>{t("message.sendFailed")}</Text>
           <Text numberOfLines={6} selectable style={styles.messageErrorText}>
             {error}
           </Text>
@@ -175,11 +194,12 @@ function DeliveryStatusIcon({
 }: {
   status: ChatMessage["deliveryStatus"];
 }) {
+  const t = useTranslation();
   if (!status) {
     return null;
   }
 
-  const tone = deliveryTone(status);
+  const tone = deliveryTone(status, t);
   const Icon = status === "sending" ? Clock3 : status === "sent" ? CheckCircle2 : AlertCircle;
 
   return (
@@ -198,8 +218,10 @@ function MessagePart({
   isFirst: boolean;
   onRespondApproval: (approval: PendingApproval, decision: string) => void;
 }) {
+  const t = useTranslation();
+
   if (part.type === "text") {
-    const text = part.text || (part.pending ? "Working..." : "");
+    const text = part.text || (part.pending ? t("message.working") : "");
     return (
       <MarkdownText text={text} containerStyle={!isFirst && styles.messagePartSpacing} />
     );
@@ -226,7 +248,8 @@ function ActivityTimelinePart({
   isFirst: boolean;
 }) {
   const [detailsVisible, setDetailsVisible] = useState(false);
-  const tone = activityTone(part.status);
+  const t = useTranslation();
+  const tone = activityTone(part.status, t);
   const canOpenDetails = hasToolDetails(part);
 
   return (
@@ -277,7 +300,8 @@ function ToolDetailsModal({
   part: Extract<ChatMessagePart, { type: "activity" }>;
   onClose: () => void;
 }) {
-  const sections = toolDetailSections(part);
+  const t = useTranslation();
+  const sections = toolDetailSections(part, t);
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
@@ -286,9 +310,14 @@ function ToolDetailsModal({
           <View style={styles.toolDetailsHeader}>
             <View style={styles.toolDetailsTitleWrap}>
               <Text numberOfLines={1} style={styles.toolDetailsTitle}>{part.title}</Text>
-              <Text style={styles.toolDetailsSubtitle}>{activityTone(part.status).label}</Text>
+              <Text style={styles.toolDetailsSubtitle}>{activityTone(part.status, t).label}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close tool details" onPress={onClose} style={styles.toolDetailsClose}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("message.closeToolDetails")}
+              onPress={onClose}
+              style={styles.toolDetailsClose}
+            >
               <X size={18} color={colors.text} />
             </Pressable>
           </View>
@@ -322,6 +351,7 @@ function ToolDetailsSection({
   children: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const t = useTranslation();
   const Icon = icon === "file" ? FileCode2 : icon === "alert" ? AlertCircle : icon === "code" ? Code2 : Terminal;
   const color = tone === "danger" ? colors.danger : colors.accent;
 
@@ -329,7 +359,11 @@ function ToolDetailsSection({
     <View style={styles.toolDetailSection}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={expanded ? `Collapse ${title}` : `Expand ${title}`}
+        accessibilityLabel={
+          expanded
+            ? t("message.collapseSection", { title })
+            : t("message.expandSection", { title })
+        }
         onPress={() => setExpanded((current) => !current)}
         style={styles.toolDetailSectionHeader}
       >
@@ -351,6 +385,7 @@ function ApprovalTimelinePart({
   isFirst: boolean;
   onRespondApproval: (approval: PendingApproval, decision: string) => void;
 }) {
+  const t = useTranslation();
   const approval = part.approval;
   const decisions = approval.available_decisions ?? ["accept", "decline", "cancel"];
   const isPending = part.status === "pending";
@@ -364,16 +399,16 @@ function ApprovalTimelinePart({
         <View style={styles.timelineHeader}>
           <View style={styles.timelineTitleWrap}>
             <ShieldCheck size={14} color={colors.warning} />
-            <Text style={styles.timelineTitle}>Approval</Text>
+            <Text style={styles.timelineTitle}>{t("message.approval")}</Text>
           </View>
           <View style={styles.approvalPendingPill}>
             <Text style={styles.approvalPendingText}>
-              {isPending ? "Pending" : part.decision ?? "Answered"}
+              {isPending ? t("message.pending") : part.decision ?? t("message.answered")}
             </Text>
           </View>
         </View>
         <Text numberOfLines={3} style={styles.timelineDetail}>
-          {approvalDetail(approval)}
+          {approvalDetail(approval, t)}
         </Text>
         {isPending ? (
           <View style={styles.approvalActions}>
@@ -424,7 +459,7 @@ function hasToolDetails(part: Extract<ChatMessagePart, { type: "activity" }>) {
   return Boolean(part.detail || part.output || part.toolDetails);
 }
 
-function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>) {
+function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>, t: Translator) {
   const details = part.toolDetails ?? {};
   const sections: Array<{
     id: string;
@@ -438,14 +473,20 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (command || details.cwd) {
     sections.push({
       id: "command",
-      title: "Command",
+      title: t("tool.command"),
       icon: "terminal",
       content: (
         <View style={styles.toolDetailRows}>
           {command ? <ToolCodeBlock text={command} /> : null}
-          {typeof details.cwd === "string" ? <ToolKeyValue label="cwd" value={details.cwd} /> : null}
-          {details.exitCode !== undefined ? <ToolKeyValue label="exit code" value={String(details.exitCode)} /> : null}
-          {details.durationMs !== undefined ? <ToolKeyValue label="duration" value={`${details.durationMs} ms`} /> : null}
+          {typeof details.cwd === "string" ? (
+            <ToolKeyValue label={t("tool.labelCwd")} value={details.cwd} />
+          ) : null}
+          {details.exitCode !== undefined ? (
+            <ToolKeyValue label={t("tool.labelExitCode")} value={String(details.exitCode)} />
+          ) : null}
+          {details.durationMs !== undefined ? (
+            <ToolKeyValue label={t("tool.labelDuration")} value={`${details.durationMs} ms`} />
+          ) : null}
         </View>
       )
     });
@@ -455,7 +496,7 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (changes.length > 0) {
     sections.push({
       id: "changes",
-      title: "File Changes",
+      title: t("tool.fileChanges"),
       icon: "file",
       content: (
         <View style={styles.toolDetailRows}>
@@ -481,7 +522,7 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (diff) {
     sections.push({
       id: "diff",
-      title: "Diff",
+      title: t("tool.diff"),
       icon: "file",
       content: <ToolCodeBlock text={diff} />
     });
@@ -491,7 +532,7 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (output) {
     sections.push({
       id: "output",
-      title: "Output",
+      title: t("tool.output"),
       icon: "code",
       content: <ToolCodeBlock text={output} />
     });
@@ -500,18 +541,18 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (details.error !== undefined || part.status === "failed") {
     sections.push({
       id: "error",
-      title: "Error",
+      title: t("tool.error"),
       icon: "alert",
       tone: "danger",
-      content: <ToolCodeBlock text={formatValue(details.error ?? part.detail ?? "Tool failed.")} />
+      content: <ToolCodeBlock text={formatValue(details.error ?? part.detail ?? t("tool.failed"))} />
     });
   }
 
-  const metadata = metadataRows(details);
+  const metadata = metadataRows(details, t);
   if (metadata.length > 0) {
     sections.push({
       id: "metadata",
-      title: "Metadata",
+      title: t("tool.metadata"),
       icon: "code",
       content: (
         <View style={styles.toolDetailRows}>
@@ -524,7 +565,7 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (details.raw !== undefined) {
     sections.push({
       id: "raw",
-      title: "Raw Event",
+      title: t("tool.rawEvent"),
       icon: "code",
       content: <ToolCodeBlock text={formatValue(details.raw)} />
     });
@@ -533,9 +574,9 @@ function toolDetailSections(part: Extract<ChatMessagePart, { type: "activity" }>
   if (sections.length === 0) {
     sections.push({
       id: "summary",
-      title: "Summary",
+      title: t("tool.summary"),
       icon: "code",
-      content: <ToolCodeBlock text={part.detail ?? "No details available."} />
+      content: <ToolCodeBlock text={part.detail ?? t("tool.noDetails")} />
     });
   }
 
@@ -559,14 +600,14 @@ function ToolKeyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function metadataRows(details: Record<string, unknown>): Array<[string, string]> {
+function metadataRows(details: Record<string, unknown>, t: Translator): Array<[string, string]> {
   return [
-    ["kind", stringValue(details.kind)],
-    ["status", stringValue(details.status)],
-    ["server", stringValue(details.server)],
-    ["tool", stringValue(details.tool)],
-    ["query", stringValue(details.query)],
-    ["success", details.success === undefined ? null : String(details.success)]
+    [t("tool.labelKind"), stringValue(details.kind)],
+    [t("tool.labelStatus"), stringValue(details.status)],
+    [t("tool.labelServer"), stringValue(details.server)],
+    [t("tool.labelTool"), stringValue(details.tool)],
+    [t("tool.labelQuery"), stringValue(details.query)],
+    [t("tool.labelSuccess"), details.success === undefined ? null : String(details.success)]
   ].filter((row): row is [string, string] => typeof row[1] === "string" && row[1].length > 0);
 }
 
@@ -599,33 +640,36 @@ function formatValue(value: unknown) {
   }
 }
 
-function deliveryTone(status: NonNullable<ChatMessage["deliveryStatus"]>) {
+function deliveryTone(status: NonNullable<ChatMessage["deliveryStatus"]>, t: Translator) {
   if (status === "sending") {
     return {
       color: colors.warning,
-      label: "Message sending"
+      label: t("message.sending")
     };
   }
   if (status === "failed") {
     return {
       color: colors.danger,
-      label: "Message failed"
+      label: t("message.failed")
     };
   }
   return {
     color: colors.success,
-    label: "Message sent"
+    label: t("message.sent")
   };
 }
 
-function activityTone(status: Extract<ChatMessagePart, { type: "activity" }>["status"]) {
+function activityTone(
+  status: Extract<ChatMessagePart, { type: "activity" }>["status"],
+  t: Translator
+) {
   if (status === "running") {
     return {
       color: colors.warning,
       border: "rgba(183, 110, 0, 0.22)",
       background: "rgba(255, 243, 214, 0.72)",
       pill: "rgba(183, 110, 0, 0.10)",
-      label: "Running"
+      label: t("activity.running")
     };
   }
   if (status === "failed") {
@@ -634,7 +678,7 @@ function activityTone(status: Extract<ChatMessagePart, { type: "activity" }>["st
       border: "rgba(180, 35, 24, 0.22)",
       background: colors.dangerSoft,
       pill: "rgba(180, 35, 24, 0.10)",
-      label: "Failed"
+      label: t("activity.failed")
     };
   }
   if (status === "done") {
@@ -643,7 +687,7 @@ function activityTone(status: Extract<ChatMessagePart, { type: "activity" }>["st
       border: "rgba(31, 122, 77, 0.20)",
       background: colors.successSoft,
       pill: "rgba(31, 122, 77, 0.10)",
-      label: "Done"
+      label: t("activity.done")
     };
   }
   return {
@@ -651,13 +695,13 @@ function activityTone(status: Extract<ChatMessagePart, { type: "activity" }>["st
     border: "rgba(23, 107, 135, 0.18)",
     background: colors.accentSoft,
     pill: "rgba(23, 107, 135, 0.10)",
-    label: "Info"
+    label: t("activity.info")
   };
 }
 
-function approvalDetail(approval: PendingApproval) {
+function approvalDetail(approval: PendingApproval, t: Translator) {
   if (approval.command) {
     return Array.isArray(approval.command) ? approval.command.join(" ") : approval.command;
   }
-  return approval.reason ?? approval.method ?? approval.approval_type ?? "Approval requested";
+  return approval.reason ?? approval.method ?? approval.approval_type ?? t("message.approvalRequested");
 }

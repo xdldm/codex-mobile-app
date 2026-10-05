@@ -35,6 +35,7 @@ import { StatusPill } from "../components/StatusPill";
 import type { ChatMessage } from "../domain/bridge";
 import { attachmentInputItems, messageForDraft } from "../domain/attachments";
 import { activeMentionTrigger, buildMentionItems, type ComposerMention } from "../domain/mentions";
+import { useTranslation } from "../i18n/useTranslation";
 import { useBridge } from "../state/BridgeProvider";
 import { colors, spacing } from "../theme/colors";
 import { compactPath } from "../utils/format";
@@ -51,6 +52,7 @@ const BOTTOM_STICKY_THRESHOLD = 64;
 
 export function HomeScreen() {
   const bridge = useBridge();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -251,7 +253,7 @@ export function HomeScreen() {
 
   const handleSend = () => {
     const attachments = bridge.pendingAttachments;
-    const value = messageForDraft(draft, attachments.length);
+    const value = messageForDraft(draft, attachments.length, t);
     const inputItems = [
       ...selectedMentions.map((mention) => mention.inputItem),
       ...attachmentInputItems(attachments)
@@ -288,9 +290,13 @@ export function HomeScreen() {
             label={bridge.health?.codex_ready ? "online" : "offline"}
             tone={bridge.health?.codex_ready ? "ok" : bridge.error ? "error" : "warn"}
           />
-          <IconAction icon={FolderGit2} label="Repositories" onPress={() => router.push("/repositories")} />
-          <IconAction icon={RefreshCcw} label="Refresh" onPress={() => void bridge.refreshAll()} />
-          <IconAction icon={Settings} label="Settings" onPress={() => router.push("/settings")} />
+          <IconAction
+            icon={FolderGit2}
+            label={t("home.repositories")}
+            onPress={() => router.push("/repositories")}
+          />
+          <IconAction icon={RefreshCcw} label={t("common.refresh")} onPress={() => void bridge.refreshAll()} />
+          <IconAction icon={Settings} label={t("home.settings")} onPress={() => router.push("/settings")} />
         </View>
 
         <LimitsModal visible={limitsVisible} onClose={() => setLimitsVisible(false)} />
@@ -309,7 +315,7 @@ export function HomeScreen() {
             <ListTree size={18} color={colors.text} />
             <View style={styles.threadTextWrap}>
               <Text numberOfLines={1} style={styles.threadTitle}>
-                {bridge.selectedThread?.title ?? "New conversation"}
+                {bridge.selectedThread?.title ?? t("home.newConversation")}
               </Text>
               <Text numberOfLines={1} style={styles.threadSubtitle}>
                 {bridge.threads.length} conversations in this repository
@@ -317,10 +323,14 @@ export function HomeScreen() {
             </View>
           </Pressable>
           <View style={styles.threadActions}>
-            <IconAction icon={MessageSquarePlus} label="New conversation" onPress={() => void bridge.createNewThread()} />
+            <IconAction
+              icon={MessageSquarePlus}
+              label={t("home.newConversation")}
+              onPress={() => void bridge.createNewThread()}
+            />
             <IconAction
               icon={FolderPlus}
-              label="Add folder"
+              label={t("home.addFolder")}
               onPress={() => setFolderPickerVisible(true)}
             />
           </View>
@@ -389,7 +399,7 @@ export function HomeScreen() {
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Attach a file"
+              accessibilityLabel={t("home.attachFile")}
               disabled={bridge.isUploadingAttachment}
               onPress={() => void bridge.attachFile()}
               style={({ pressed }) => [
@@ -440,7 +450,7 @@ export function HomeScreen() {
                 value={draft}
                 onChangeText={handleDraftChange}
                 multiline
-                placeholder="Message Codex"
+                placeholder={t("home.messagePlaceholder")}
                 placeholderTextColor={colors.textSubtle}
                 onBlur={() => setKeyboardVisible(false)}
                 onFocus={() => {
@@ -452,11 +462,16 @@ export function HomeScreen() {
               />
             </View>
             {bridge.isRunning ? (
-              <IconAction icon={Square} label="Cancel" variant="danger" onPress={() => void bridge.cancelRun()} />
+              <IconAction
+                icon={Square}
+                label={t("home.cancelRun")}
+                variant="danger"
+                onPress={() => void bridge.cancelRun()}
+              />
             ) : (
               <IconAction
                 icon={Send}
-                label="Send"
+                label={t("home.send")}
                 variant="filled"
                 disabled={!canSend}
                 onPress={handleSend}

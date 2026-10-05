@@ -12,6 +12,8 @@ import {
 } from "../../domain/composerOptions";
 import type { CodexModel, ReasoningEffort } from "../../domain/bridge";
 import { useBridge } from "../../state/BridgeProvider";
+import { useTranslation } from "../../i18n/useTranslation";
+import type { Translator } from "../../i18n";
 import { colors, spacing } from "../../theme/colors";
 import { limitsMenuDetail } from "./limits";
 import { styles } from "./styles";
@@ -29,6 +31,7 @@ export function ComposerMenu({
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [panel, setPanel] = useState<MenuPanel>("main");
+  const t = useTranslation();
   const efforts = effortsForModel(selectedModel);
   const fastTiers = fastTierOptionsForModel(selectedModel);
   const currentFastTier = fastTiers.find((tier) => tier.id === bridge.serviceTier) ?? null;
@@ -61,44 +64,46 @@ export function ComposerMenu({
               ) : (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Back"
+                  accessibilityLabel={t("common.back")}
                   onPress={() => setPanel("main")}
                   style={styles.menuBackButton}
                 >
                   <ChevronLeft size={20} color={colors.text} />
                 </Pressable>
               )}
-              <Text style={styles.menuTitle}>{panelTitle(panel)}</Text>
-              <IconAction icon={X} label="Close menu" onPress={close} />
+              <Text style={styles.menuTitle}>{panelTitle(panel, t)}</Text>
+              <IconAction icon={X} label={t("composer.closeMenu")} onPress={close} />
             </View>
 
             {panel === "main" ? (
               <View style={styles.menuItems}>
                 <MenuItem
                   icon={<Bot size={18} color={colors.textMuted} />}
-                  label="Models"
-                  detail={selectedModel?.displayName ?? bridge.selectedModelId ?? "Default"}
+                  label={t("composer.models")}
+                  detail={selectedModel?.displayName ?? bridge.selectedModelId ?? t("common.default")}
                   onPress={() => setPanel("models")}
                   showChevron
                 />
                 <MenuItem
                   icon={<Gauge size={18} color={colors.textMuted} />}
-                  label="Effort"
+                  label={t("composer.effort")}
                   detail={bridge.reasoningEffort}
                   onPress={() => setPanel("effort")}
                   showChevron
                 />
                 <MenuItem
                   icon={<Zap size={18} color={fastEnabled ? colors.textMuted : colors.textSubtle} />}
-                  label="Fast"
-                  detail={currentFastTier?.label ?? (fastEnabled ? "Off" : "Unavailable")}
+                  label={t("composer.fast")}
+                  detail={
+                    currentFastTier?.label ?? (fastEnabled ? t("common.off") : t("common.unavailable"))
+                  }
                   disabled={!fastEnabled}
                   onPress={() => setPanel("fast")}
                   showChevron
                 />
                 <MenuItem
                   icon={<ShieldCheck size={18} color={colors.textMuted} />}
-                  label="Limits"
+                  label={t("composer.limits")}
                   detail={limitsMenuDetail(bridge)}
                   onPress={() => {
                     close();
@@ -147,8 +152,8 @@ export function ComposerMenu({
             {panel === "fast" ? (
               <View style={styles.menuItems}>
                 <SelectableItem
-                  label="Off"
-                  detail="Use the model default tier"
+                  label={t("common.off")}
+                  detail={t("composer.useDefaultTier")}
                   selected={!bridge.serviceTier}
                   onPress={() => {
                     bridge.setServiceTier(null);
@@ -168,7 +173,11 @@ export function ComposerMenu({
                     />
                   ))
                 ) : (
-                  <SelectableItem label="No speed tiers" detail="Unavailable for this model" disabled />
+                  <SelectableItem
+                    label={t("composer.noSpeedTiers")}
+                    detail={t("composer.unavailableForModel")}
+                    disabled
+                  />
                 )}
               </View>
             ) : null}
@@ -279,15 +288,15 @@ function FastTierItem({
   );
 }
 
-function panelTitle(panel: MenuPanel) {
+function panelTitle(panel: MenuPanel, t: Translator) {
   switch (panel) {
     case "models":
-      return "Models";
+      return t("composer.models");
     case "effort":
-      return "Effort";
+      return t("composer.effort");
     case "fast":
-      return "Fast";
+      return t("composer.fast");
     default:
-      return "Options";
+      return t("composer.optionsTitle");
   }
 }

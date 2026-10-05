@@ -1,5 +1,9 @@
 import { attachmentInputItems, messageForDraft } from "../src/domain/attachments";
 import type { UploadedAttachment } from "../src/domain/bridge";
+import { createTranslator } from "../src/i18n";
+
+const en = createTranslator("en");
+const zh = createTranslator("zh");
 
 function attachment(overrides: Partial<UploadedAttachment> = {}): UploadedAttachment {
   return {
@@ -31,15 +35,17 @@ describe("attachmentInputItems", () => {
 
 describe("messageForDraft", () => {
   it("keeps the draft when the user typed something", () => {
-    expect(messageForDraft("What is wrong here?", 1)).toBe("What is wrong here?");
+    expect(messageForDraft("What is wrong here?", 1, en)).toBe("What is wrong here?");
   });
 
   it("falls back to a prompt when only attachments are present", () => {
-    expect(messageForDraft("", 1)).toBe("Please review the attached file.");
-    expect(messageForDraft("   ", 2)).toBe("Please review the attached files.");
+    expect(messageForDraft("", 1, en)).toBe("Please review the attached file.");
+    expect(messageForDraft("   ", 2, en)).toBe("Please review the attached files.");
+    expect(messageForDraft("", 1, zh)).toBe("请查看附件。");
+    expect(messageForDraft("   ", 2, zh)).toBe("请查看这些附件。");
   });
 
   it("does not invent a message without attachments", () => {
-    expect(messageForDraft("", 0)).toBe("");
+    expect(messageForDraft("", 0, en)).toBe("");
   });
 });

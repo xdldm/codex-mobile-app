@@ -2,6 +2,7 @@
 // and producing a usable message when the user sends attachments without text.
 
 import type { RunInputItem, UploadedAttachment } from "./bridge";
+import type { Translator } from "../i18n";
 
 export function attachmentInputItems(attachments: UploadedAttachment[]): RunInputItem[] {
   return attachments.map((attachment) => ({
@@ -11,12 +12,10 @@ export function attachmentInputItems(attachments: UploadedAttachment[]): RunInpu
   }));
 }
 
-export function messageForDraft(draft: string, attachmentCount: number) {
+export function messageForDraft(draft: string, attachmentCount: number, t: Translator) {
   if (draft.trim().length > 0 || attachmentCount === 0) {
     return draft;
   }
 
-  return attachmentCount > 1
-    ? "Please review the attached files."
-    : "Please review the attached file.";
+  return t(attachmentCount > 1 ? "home.attachedPromptMany" : "home.attachedPromptOne");
 }

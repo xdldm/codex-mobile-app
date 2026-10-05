@@ -13,5 +13,6 @@ export const DEFAULT_PREFERENCES: BridgePreferences = {
   approvalPolicy: "on-request",
   sandboxMode: "workspace-write",
   serviceTier: null,
-  networkAccessEnabled: false
+  networkAccessEnabled: false,
+  language: "system"
 };

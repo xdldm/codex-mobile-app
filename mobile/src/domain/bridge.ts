@@ -1,3 +1,5 @@
+import type { LanguagePreference } from "../i18n";
+
 export type BridgeHealth = {
   status: "ok" | "degraded" | "error" | string;
   codex_ready: boolean;
@@ -398,4 +400,5 @@ export type BridgePreferences = {
   sandboxMode: SandboxMode;
   serviceTier: string | null;
   networkAccessEnabled: boolean;
+  language: LanguagePreference;
 };
