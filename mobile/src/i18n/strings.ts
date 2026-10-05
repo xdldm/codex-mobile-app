@@ -38,6 +38,16 @@ export const STRINGS = {
   "home.attachedPromptOne": { en: "Please review the attached file.", zh: "请查看附件。" },
   "home.attachedPromptMany": { en: "Please review the attached files.", zh: "请查看这些附件。" },
 
+  "menu.title": { en: "Menu", zh: "菜单" },
+  "menu.close": { en: "Close menu", zh: "关闭菜单" },
+  "menu.online": { en: "online", zh: "在线" },
+  "menu.offline": { en: "offline", zh: "离线" },
+  "menu.conversation": { en: "Conversation", zh: "当前对话" },
+  "menu.threadCount": {
+    en: "{count} conversations in this repository",
+    zh: "该仓库下有 {count} 个对话"
+  },
+
   "empty.loading": { en: "Loading conversation", zh: "正在加载对话" },
   "empty.noMessages": { en: "No readable messages", zh: "没有可显示的消息" },
   "empty.newConversation": { en: "New conversation", zh: "新对话" },

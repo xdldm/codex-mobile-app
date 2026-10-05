@@ -11,6 +11,20 @@ export const styles = StyleSheet.create({
   keyboard: {
     flex: 1
   },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  menuButtonPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }]
+  },
   header: {
     minHeight: 68,
     paddingHorizontal: spacing.lg,

@@ -3,6 +3,7 @@ import {
   FolderPlus,
   FolderGit2,
   ListTree,
+  Menu,
   MessageSquarePlus,
   Paperclip,
   RefreshCcw,
@@ -45,6 +46,7 @@ import { FolderPickerModal } from "./home/FolderPickerModal";
 import { LimitsModal } from "./home/LimitsModal";
 import { MentionPalette } from "./home/MentionPalette";
 import { MessageBubble } from "./home/MessageBubble";
+import { SideMenu } from "./home/SideMenu";
 import { styles } from "./home/styles";
 
 // How close to the bottom still counts as "following the conversation".
@@ -60,6 +62,7 @@ export function HomeScreen() {
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
   const [limitsVisible, setLimitsVisible] = useState(false);
   const [folderPickerVisible, setFolderPickerVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const messageListRef = useRef<FlatList<ChatMessage> | null>(null);
   const mentionLoadRequested = useRef(false);
   // Sticky bottom: follow new output only while the user is already at the
@@ -280,27 +283,23 @@ export function HomeScreen() {
         ]}
       >
         <View style={styles.header}>
-          <View style={styles.titleWrap}>
-            <Text style={styles.appTitle}>Codex Mobile</Text>
-            <Text numberOfLines={1} style={styles.subtitle}>
-              {bridge.selectedWorkspace ? compactPath(bridge.selectedWorkspace.path) : "No repository"}
-            </Text>
-          </View>
-          <StatusPill
-            label={bridge.health?.codex_ready ? "online" : "offline"}
-            tone={bridge.health?.codex_ready ? "ok" : bridge.error ? "error" : "warn"}
-          />
-          <IconAction
-            icon={FolderGit2}
-            label={t("home.repositories")}
-            onPress={() => router.push("/repositories")}
-          />
-          <IconAction icon={RefreshCcw} label={t("common.refresh")} onPress={() => void bridge.refreshAll()} />
-          <IconAction icon={Settings} label={t("home.settings")} onPress={() => router.push("/settings")} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("menu.title")}
+            onPress={() => setMenuVisible(true)}
+            style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+          >
+            <Menu size={20} color={colors.text} />
+          </Pressable>
         </View>
 
         <LimitsModal visible={limitsVisible} onClose={() => setLimitsVisible(false)} />
         <FolderPickerModal visible={folderPickerVisible} onClose={() => setFolderPickerVisible(false)} />
+        <SideMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          onAddFolder={() => setFolderPickerVisible(true)}
+        />
 
         {bridge.error ? (
           <View style={styles.errorBand}>
@@ -309,32 +308,6 @@ export function HomeScreen() {
             </Text>
           </View>
         ) : null}
-
-        <View style={styles.threadBar}>
-          <Pressable style={styles.threadButton} onPress={() => router.push("/conversations")}>
-            <ListTree size={18} color={colors.text} />
-            <View style={styles.threadTextWrap}>
-              <Text numberOfLines={1} style={styles.threadTitle}>
-                {bridge.selectedThread?.title ?? t("home.newConversation")}
-              </Text>
-              <Text numberOfLines={1} style={styles.threadSubtitle}>
-                {bridge.threads.length} conversations in this repository
-              </Text>
-            </View>
-          </Pressable>
-          <View style={styles.threadActions}>
-            <IconAction
-              icon={MessageSquarePlus}
-              label={t("home.newConversation")}
-              onPress={() => void bridge.createNewThread()}
-            />
-            <IconAction
-              icon={FolderPlus}
-              label={t("home.addFolder")}
-              onPress={() => setFolderPickerVisible(true)}
-            />
-          </View>
-        </View>
 
         <FlatList
           ref={messageListRef}
