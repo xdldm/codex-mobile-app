@@ -95,7 +95,8 @@ npm run web
 - Timeline estruturada de atividade, ferramentas e aprovacoes human-in-the-loop, com cancelamento.
 - Mentions estruturadas no composer (`$app` / `$skill` / `$mcp`) e navegacao de recursos MCP.
 - Anexos no composer: escolhe um arquivo pelo seletor do sistema, le em base64, envia para `POST /v1/uploads` e anexa o caminho ao run (imagens vao como imagem; o resto como referencia de caminho).
-- Copiar resposta: botao `Copy` (ou toque longo) no balao do Codex copia o texto e o codigo da resposta pelo `expo-clipboard`.
+- Copiar resposta: o botao `Copy all` copia a resposta inteira pelo `expo-clipboard`; toque longo no texto abre a selecao nativa para copiar so um trecho.
+- Links clicaveis: `[texto](url)` e URLs soltas (`https://...`, `www...`) abrem no navegador, e o texto continua selecionavel para copia parcial.
 - Limites de conta e presets de modo de execucao (sandbox, approval policy, network).
 - Settings para URL do Bridge e defaults do Codex.
 

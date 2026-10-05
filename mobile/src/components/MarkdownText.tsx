@@ -52,6 +52,7 @@ function renderBlock(
     return (
       <Text
         key={key}
+        selectable
         style={[
           styles.text,
           variant === "inverted" ? styles.textInverted : null,
@@ -109,6 +110,7 @@ function renderBlock(
               {block.ordered ? `${itemIndex + 1}.` : "-"}
             </Text>
             <Text
+              selectable
               style={[
                 styles.text,
                 styles.listText,
@@ -135,6 +137,7 @@ function renderBlock(
         ]}
       >
         <Text
+          selectable
           style={[
             styles.text,
             styles.quoteText,
@@ -164,6 +167,7 @@ function renderBlock(
   return (
     <Text
       key={key}
+      selectable
       style={[
         styles.text,
         variant === "inverted" ? styles.textInverted : null,
@@ -206,6 +210,7 @@ function renderInline(
       return (
         <Text
           key={key}
+          accessibilityRole="link"
           onPress={() => openLink(node.href)}
           style={[
             styles.link,
@@ -252,9 +257,13 @@ function headingStyle(level: number) {
 }
 
 function openLink(href: string) {
-  if (/^(https?:|mailto:|tel:)/i.test(href)) {
-    void Linking.openURL(href);
+  if (!/^(https?:|mailto:|tel:)/i.test(href)) {
+    return;
   }
+
+  // A rejected open (no handler for the scheme, no browser) should not surface
+  // as an unhandled promise rejection in the chat.
+  void Linking.openURL(href).catch(() => undefined);
 }
 
 const styles = StyleSheet.create({

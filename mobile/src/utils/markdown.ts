@@ -19,7 +19,11 @@ type InlineToken =
   | { type: "strong"; start: number; end: number; text: string }
   | { type: "emphasis"; start: number; end: number; text: string }
   | { type: "delete"; start: number; end: number; text: string }
-  | { type: "link"; start: number; end: number; label: string; href: string };
+  | { type: "link"; start: number; end: number; label: string; href: string }
+  | { type: "autolink"; start: number; end: number; text: string; href: string };
+
+const AUTOLINK_START = /^(https?:\/\/|www\.)/i;
+const AUTOLINK_BODY = /^(?:https?:\/\/|www\.)[^\s<>\[\]]+/i;
 
 type ListItemMatch = {
   ordered: boolean;
@@ -163,6 +167,8 @@ export function parseInlineMarkdown(value: string): MarkdownInlineNode[] {
 
     if (token.type === "code") {
       nodes.push({ type: "code", text: token.text });
+    } else if (token.type === "autolink") {
+      nodes.push({ type: "link", href: token.href, children: [{ type: "text", text: token.text }] });
     } else if (token.type === "link") {
       nodes.push({ type: "link", href: token.href, children: parseInlineMarkdown(token.label) });
     } else {
@@ -208,6 +214,13 @@ function nextInlineToken(value: string, start: number): InlineToken | null {
       }
     }
 
+    if (char === "h" || char === "H" || char === "w" || char === "W") {
+      const autolink = matchBareUrl(value, index, start);
+      if (autolink) {
+        return autolink;
+      }
+    }
+
     if (char === "*" && !value.startsWith("**", index)) {
       const end = value.indexOf("*", index + 1);
       if (end > index + 1) {
@@ -248,6 +261,54 @@ function pushText(nodes: MarkdownInlineNode[], text: string) {
   if (text.length > 0) {
     nodes.push({ type: "text", text });
   }
+}
+
+/**
+ * Turns a bare URL in prose into a link. Trailing sentence punctuation stays
+ * outside the link, and `<https://example.com>` keeps its angle brackets.
+ */
+function matchBareUrl(value: string, start: number, scanFrom: number): InlineToken | null {
+  const match = AUTOLINK_BODY.exec(value.slice(start));
+  if (!match) {
+    return null;
+  }
+
+  const text = trimUrlPunctuation(match[0]);
+  if (text.length === 0) {
+    return null;
+  }
+
+  let tokenStart = start;
+  let tokenEnd = start + text.length;
+
+  if (start > scanFrom && value[start - 1] === "<" && value[tokenEnd] === ">") {
+    tokenStart = start - 1;
+    tokenEnd += 1;
+  }
+
+  return {
+    type: "autolink",
+    start: tokenStart,
+    end: tokenEnd,
+    text,
+    href: /^www\./i.test(text) ? `https://${text}` : text
+  };
+}
+
+function trimUrlPunctuation(raw: string) {
+  let text = raw.replace(/[.,;:!?'"”’]+$/, "");
+
+  // Keep a closing paren that belongs to the URL, drop one that closes prose.
+  while (text.endsWith(")")) {
+    const opens = (text.match(/\(/g) ?? []).length;
+    const closes = (text.match(/\)/g) ?? []).length;
+    if (closes <= opens) {
+      break;
+    }
+    text = text.slice(0, -1);
+  }
+
+  return text;
 }
 
 function matchListItem(line: string): ListItemMatch | null {

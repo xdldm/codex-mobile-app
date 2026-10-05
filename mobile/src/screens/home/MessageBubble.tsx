@@ -40,11 +40,7 @@ export function MessageBubble({
 
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
-      <Pressable
-        delayLongPress={350}
-        onLongPress={copyText ? () => void copy(copyText) : undefined}
-        style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}
-      >
+      <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
         <View style={styles.messageHeader}>
           <Text style={[styles.messageRole, isUser && styles.userRole]}>
             {isUser ? "You" : "Codex"}
@@ -79,7 +75,7 @@ export function MessageBubble({
         {!isUser && copyText ? (
           <MessageCopyAction copied={copied} onPress={() => void copy(copyText)} />
         ) : null}
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -90,14 +86,14 @@ function MessageCopyAction({ copied, onPress }: { copied: boolean; onPress: () =
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={copied ? "Response copied" : "Copy response"}
+      accessibilityLabel={copied ? "Full response copied" : "Copy full response"}
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.messageCopyAction, pressed && styles.messageCopyActionPressed]}
     >
       <Icon size={13} color={copied ? colors.success : colors.textMuted} strokeWidth={2.6} />
       <Text style={[styles.messageCopyActionText, copied && styles.messageCopyActionTextDone]}>
-        {copied ? "Copied" : "Copy"}
+        {copied ? "Copied" : "Copy all"}
       </Text>
     </Pressable>
   );
