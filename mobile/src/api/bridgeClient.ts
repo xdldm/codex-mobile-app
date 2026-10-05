@@ -420,12 +420,35 @@ function decodeChunk(value: Uint8Array | undefined, decoder: TextDecoder | null)
     .join("");
 }
 
-async function toBridgeError(response: Response) {
+type BridgeRequestError = Error & { status?: number; code?: string };
+
+async function toBridgeError(response: Response): Promise<BridgeRequestError> {
+  const fallback = `Bridge request failed with ${response.status}`;
+  let message = fallback;
+  let code: string | undefined;
+
   try {
     const payload = (await response.json()) as { error?: { message?: string; code?: string } };
-    const message = payload.error?.message ?? payload.error?.code;
-    return new Error(message ?? `Bridge request failed with ${response.status}`);
+    message = payload.error?.message ?? payload.error?.code ?? fallback;
+    code = payload.error?.code;
   } catch {
-    return new Error(`Bridge request failed with ${response.status}`);
+    // Non-JSON error body: keep the status based message.
   }
+
+  const error = new Error(message) as BridgeRequestError;
+  error.status = response.status;
+  if (code) {
+    error.code = code;
+  }
+  return error;
+}
+
+/**
+ * The bridge no longer knows this run: it finished and its replay window
+ * closed. Reconnecting to it is not a failure — the transcript already holds
+ * the final turn, so callers should fall back to reloading that instead.
+ */
+export function isRunGoneError(error: unknown) {
+  const candidate = error as { status?: number; code?: string } | null | undefined;
+  return Boolean(candidate && (candidate.code === "run_not_found" || candidate.status === 404));
 }

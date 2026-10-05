@@ -11,7 +11,7 @@ import React, {
 import { File } from "expo-file-system";
 import { AppState } from "react-native";
 
-import { BridgeClient, approvalSummary } from "../api/bridgeClient";
+import { BridgeClient, approvalSummary, isRunGoneError } from "../api/bridgeClient";
 import { DEFAULT_PREFERENCES } from "../config/defaults";
 import {
   getCodexMobileBuildConfig,
@@ -1492,7 +1492,12 @@ export function BridgeProvider({ children }: PropsWithChildren) {
         sinceSeq
       )
       .catch((caught) => {
-        if (!abortController.signal.aborted) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+        // The bridge dropped the run (finished, replay window closed): not an
+        // error. The resync below rebuilds the turn from the transcript.
+        if (!isRunGoneError(caught)) {
           setError(errorMessage(caught));
         }
       })

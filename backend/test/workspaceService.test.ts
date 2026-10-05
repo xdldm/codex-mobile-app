@@ -150,6 +150,8 @@ function testConfig(defaultWorkspace: string, workspaceAllowlistFile: string): B
     workspaceAllowlistFile,
     uploadDir: path.join(defaultWorkspace, ".uploads"),
     uploadMaxBytes: 1024 * 1024,
+    runBufferEvents: 5000,
+    runRetentionMs: 300_000,
     defaultWorkspace,
     defaultSkipGitRepoCheck: true,
     defaultModel: null,

@@ -41,12 +41,20 @@ export class RunRegistry {
   private readonly runs = new Map<string, RunRecord>();
   private readonly activeByThread = new Map<string, RunRecord>();
   private readonly maxBufferedEvents: number;
+  private readonly runRetentionMs: number;
+  private readonly retentionTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly threadService: BridgeThreadService,
-    options: { maxBufferedEvents?: number } = {}
+    options: { maxBufferedEvents?: number; runRetentionMs?: number } = {}
   ) {
-    this.maxBufferedEvents = options.maxBufferedEvents ?? 1000;
+    // The buffer is the reconnect window: a client that was backgrounded replays
+    // what it missed from here, so it needs to cover a whole long turn rather
+    // than only its tail.
+    this.maxBufferedEvents = options.maxBufferedEvents ?? 5000;
+    // Finished runs stay replayable for a while so a late reconnect can still
+    // finish the turn, then the record is dropped.
+    this.runRetentionMs = options.runRetentionMs ?? 5 * 60 * 1000;
   }
 
   async startRun(threadId: string, input: RunStreamBody) {
@@ -206,7 +214,33 @@ export class RunRegistry {
         subscriber.close();
       }
       record.subscribers.clear();
+      this.scheduleRetention(record);
     }
+  }
+
+  /**
+   * Drops a finished run (and its buffered events) once its replay window
+   * closes. Without this the registry keeps every run for the lifetime of the
+   * process, which slowly grows memory.
+   */
+  private scheduleRetention(record: RunRecord) {
+    const runId = record.runId ?? record.internalId;
+    if (this.retentionTimers.has(runId)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      this.retentionTimers.delete(runId);
+      if (isActive(record.status)) {
+        return;
+      }
+
+      this.runs.delete(runId);
+      record.events.length = 0;
+      record.subscribers.clear();
+    }, this.runRetentionMs);
+    timer.unref();
+    this.retentionTimers.set(runId, timer);
   }
 
   private bufferEvent(record: RunRecord, event: BridgeSseEvent) {

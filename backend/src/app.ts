@@ -45,7 +45,12 @@ export function createApp(deps: AppDependencies = {}) {
   const threadService =
     deps.threadService ??
     createDefaultThreadService(config, workspaceService, deps.appServerClient, uploadService);
-  const runRegistry = deps.runRegistry ?? new RunRegistry(threadService);
+  const runRegistry =
+    deps.runRegistry ??
+    new RunRegistry(threadService, {
+      maxBufferedEvents: config.runBufferEvents,
+      runRetentionMs: config.runRetentionMs
+    });
   const fileSystemService = deps.fileSystemService ?? new FileSystemService();
 
   return async function handleRequest(req: IncomingMessage, res: ServerResponse) {

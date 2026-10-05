@@ -259,6 +259,8 @@ function testConfig(uploadDir = path.join(os.tmpdir(), "codex-mobile-test-upload
     workspaceAllowlistFile: "__missing_allowlist__",
     uploadDir,
     uploadMaxBytes: 1024 * 1024,
+    runBufferEvents: 5000,
+    runRetentionMs: 300_000,
     defaultWorkspace: process.cwd(),
     defaultSkipGitRepoCheck: true,
     defaultModel: null,

@@ -117,6 +117,13 @@ Aprovacoes e setup
 - `POST /v1/approvals/:approvalId/respond`
 - `GET /v1/setup/status`
 
+Reconexao de runs
+
+O registry guarda os eventos de cada run para um cliente que ficou em segundo plano poder reconectar e receber so o que perdeu (`GET /v1/runs/:runId/events/stream?since_seq=N`).
+
+- `CODEX_BRIDGE_RUN_BUFFER_EVENTS` (padrao 5000): quantos eventos ficam guardados por run. E a janela de reconexao; eventos mais antigos sao descartados.
+- `CODEX_BRIDGE_RUN_RETENTION_MS` (padrao 300000): por quanto tempo um run terminado continua sendo replicavel antes de o registro ser esquecido. Depois disso, reconectar retorna `run_not_found` e o cliente recarrega a conversa do transcript.
+
 Rotas que dependem de capability (models, config, account, features, apps, skills, MCP, aprovacoes, rename) retornam erro quando o runtime ativo nao as suporta. Consulte `GET /v1/capabilities` para descobrir o que esta disponivel.
 
 ## Bind e exposicao

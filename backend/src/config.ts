@@ -18,6 +18,8 @@ const EnvSchema = z.object({
     .int()
     .positive()
     .default(DEFAULT_UPLOAD_MAX_BYTES),
+  CODEX_BRIDGE_RUN_BUFFER_EVENTS: z.coerce.number().int().positive().default(5000),
+  CODEX_BRIDGE_RUN_RETENTION_MS: z.coerce.number().int().nonnegative().default(300_000),
   CODEX_BRIDGE_SKIP_GIT_REPO_CHECK: z
     .string()
     .optional()
@@ -36,6 +38,8 @@ export type BridgeConfig = {
   workspaceAllowlistFile: string;
   uploadDir: string;
   uploadMaxBytes: number;
+  runBufferEvents: number;
+  runRetentionMs: number;
   defaultWorkspace: string;
   defaultSkipGitRepoCheck: boolean;
   defaultModel: string | null;
@@ -66,6 +70,8 @@ export function getBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCon
     workspaceAllowlistFile,
     uploadDir,
     uploadMaxBytes: parsed.CODEX_BRIDGE_UPLOAD_MAX_BYTES,
+    runBufferEvents: parsed.CODEX_BRIDGE_RUN_BUFFER_EVENTS,
+    runRetentionMs: parsed.CODEX_BRIDGE_RUN_RETENTION_MS,
     defaultWorkspace,
     defaultSkipGitRepoCheck: parsed.CODEX_BRIDGE_SKIP_GIT_REPO_CHECK,
     defaultModel: parsed.CODEX_BRIDGE_DEFAULT_MODEL?.trim() || null,
