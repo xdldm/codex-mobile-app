@@ -344,6 +344,9 @@ export function HomeScreen() {
           </View>
         ) : null}
 
+        {/* The message area is its own container so the jump-to-bottom button can
+            float at its bottom edge regardless of how tall the composer is. */}
+        <View style={styles.messageArea}>
         <FlatList
           ref={messageListRef}
           data={bridge.messages}
@@ -394,6 +397,7 @@ export function HomeScreen() {
             <ChevronDown size={20} color={colors.text} />
           </Pressable>
         ) : null}
+        </View>
 
         {mentionTrigger ? (
           <MentionPalette

@@ -153,6 +153,9 @@ export const styles = StyleSheet.create({
   messages: {
     flex: 1
   },
+  messageArea: {
+    flex: 1
+  },
   messageList: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
