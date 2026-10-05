@@ -9,6 +9,7 @@ import React, {
   type PropsWithChildren
 } from "react";
 import { File } from "expo-file-system";
+import { AppState } from "react-native";
 
 import { BridgeClient, approvalSummary } from "../api/bridgeClient";
 import { DEFAULT_PREFERENCES } from "../config/defaults";
@@ -56,6 +57,7 @@ import {
   upsertActivityPart,
   upsertApprovalPart
 } from "../domain/chatMessageParts";
+import { pickAttachableRun } from "../domain/activeRun";
 import { messagesFromThread } from "../domain/threadHistory";
 import { loadPreferences, savePreferences } from "../storage/preferences";
 import { asNumber, asString, createId, errorMessage, lowerString, normalizeUrl, trimMiddle } from "../utils/value";
@@ -225,6 +227,11 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const activeRunThreadId = useRef<string | null>(null);
   const activeUserMessageId = useRef<string | null>(null);
   const isUploadingAttachmentRef = useRef(false);
+  // Reattach bookkeeping: the last event sequence we rendered per run, and the
+  // assistant bubble a run is already streaming into. Both let a reconnect
+  // resume exactly where it stopped instead of replaying into a fresh bubble.
+  const lastEventSeqByRun = useRef(new Map<string, number>());
+  const assistantMessageIdByRun = useRef(new Map<string, string>());
   const attachedRunId = useRef<string | null>(null);
   const detachedAbortControllers = useRef(new Set<AbortController>());
   const buildConfig = useMemo(() => getCodexMobileBuildConfig(), []);
@@ -304,6 +311,69 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     },
     [client, isCurrentThreadContentRequest, nextThreadContentRequest, setSelectedThread]
   );
+
+  const reloadSelectedThreadContent = useCallback(async () => {
+    const thread = selectedThreadRef.current;
+    if (!thread) {
+      return;
+    }
+
+    await loadThreadContent(thread);
+  }, [loadThreadContent]);
+
+  /**
+   * Reconciles the client with the bridge after the stream stopped being
+   * trustworthy (socket dropped on background, half-open connection, transient
+   * network error, bridge restart). The server is the source of truth:
+   * - run still active -> publish it so the attach effect reconnects from the
+   *   last rendered event sequence.
+   * - run gone while we were attached -> rebuild the turn from the transcript,
+   *   which is what switching conversations used to do by hand.
+   */
+  const resyncActiveRun = useCallback(async () => {
+    try {
+      const active = await client.listActiveRuns();
+      setActiveRuns(active.data);
+      setIsRunning(active.data.length > 0);
+
+      const threadId = selectedThreadRef.current?.id ?? null;
+      const stillRunning = active.data.some((run) => run.thread_id === threadId);
+      if (stillRunning) {
+        return;
+      }
+
+      // Only rebuild the transcript when the run we were streaming belongs to
+      // the conversation on screen; a detached run in another thread must not
+      // overwrite what the user is reading.
+      const wasAttached =
+        activeRunId.current !== null && activeRunThreadId.current === threadId;
+      activeRunId.current = null;
+      activeRunThreadId.current = null;
+      attachedRunId.current = null;
+      setIsComposerLocked(false);
+
+      if (wasAttached && threadId) {
+        await reloadSelectedThreadContent();
+      }
+    } catch {
+      // Keep the current state; the next resume, poll, or refresh retries.
+    }
+  }, [client, reloadSelectedThreadContent]);
+
+  const resyncAfterResume = useCallback(async () => {
+    // Android usually keeps the socket around while the app is paused, so the
+    // old stream may still look attached while delivering nothing. Drop it and
+    // let the attach effect reconnect from the last event sequence.
+    const controller = activeAbortController.current;
+    if (controller) {
+      detachedAbortControllers.current.add(controller);
+      controller.abort();
+      activeAbortController.current = null;
+    }
+    attachedRunId.current = null;
+
+    await resyncActiveRun();
+  }, [resyncActiveRun]);
 
   const loadThreadsForWorkspace = useCallback(
     async (workspacePath: string, preferredThreadId?: string | null) => {
@@ -1130,21 +1200,25 @@ export function BridgeProvider({ children }: PropsWithChildren) {
         if (!abortController.signal.aborted) {
           const message = errorMessage(caught);
           setError(message);
-          setMessages((current) =>
-            setMessageDeliveryStatus(current, userMessage.id, "failed", message)
-          );
-          markAssistantFailed(assistantMessageId, message);
+          // A stream that failed *after* the run started is recoverable: the
+          // attach effect reconnects from the last rendered event sequence.
+          // Only a run that never started is a real delivery failure.
+          if (activeRunId.current === null) {
+            setMessages((current) =>
+              setMessageDeliveryStatus(current, userMessage.id, "failed", message)
+            );
+            markAssistantFailed(assistantMessageId, message);
+          }
         }
       } finally {
         const detached = detachedAbortControllers.current.delete(abortController);
         if (!detached) {
           setIsComposerLocked(false);
-          setIsRunning(false);
           activeAbortController.current = null;
-          activeRunId.current = null;
-          activeRunThreadId.current = null;
           activeUserMessageId.current = null;
-          attachedRunId.current = null;
+          // The bridge decides whether the run is still going; if it is, the
+          // attach effect takes over, otherwise the transcript is reloaded.
+          void resyncActiveRun();
         }
       }
     },
@@ -1160,12 +1234,21 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       preferences.sandboxMode,
       preferences.selectedModelId,
       preferences.serviceTier,
+      resyncActiveRun,
       selectedWorkspace
     ]
   );
 
   const handleRunEvent = useCallback((event: BridgeSseEvent, assistantMessageId: string, userMessageId?: string) => {
     const data = event.data as Record<string, unknown>;
+    const eventRunId = asString(data.run_id) ?? activeRunId.current;
+    const eventSeq = asNumber(data.event_seq);
+    if (eventRunId && typeof eventSeq === "number") {
+      const known = lastEventSeqByRun.current.get(eventRunId) ?? 0;
+      if (eventSeq > known) {
+        lastEventSeqByRun.current.set(eventRunId, eventSeq);
+      }
+    }
 
     if (event.event === "run_started") {
       const runId = asString(data.run_id);
@@ -1173,6 +1256,9 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       activeRunId.current = runId;
       activeRunThreadId.current = threadId;
       attachedRunId.current = runId;
+      if (runId) {
+        assistantMessageIdByRun.current.set(runId, assistantMessageId);
+      }
       if (userMessageId) {
         setMessages((current) => setMessageDeliveryStatus(current, userMessageId, "sent"));
       }
@@ -1364,15 +1450,26 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  // Only re-attach when the run *changes*: keying the effect on the run id keeps
+  // a routine `activeRuns` refresh (or the resync poll) from aborting and
+  // restarting a healthy stream.
+  const attachableRun = useMemo(() => {
+    return pickAttachableRun(activeRuns, selectedThread?.id);
+  }, [activeRuns, selectedThread?.id]);
+  const attachableRunId = attachableRun?.id ?? null;
+  const attachableRunThreadId = attachableRun?.threadId ?? null;
+
   useEffect(() => {
-    const run = activeRuns.find(
-      (item) => item.thread_id === selectedThread?.id && isActiveRunStatus(item.status)
-    );
-    if (!run || attachedRunId.current === run.run_id) {
+    if (!attachableRunId || !attachableRunThreadId || attachedRunId.current === attachableRunId) {
       return;
     }
 
-    const assistantMessageId = `assistant_${run.run_id}`;
+    const runId = attachableRunId;
+    const assistantMessageId =
+      assistantMessageIdByRun.current.get(runId) ?? `assistant_${runId}`;
+    assistantMessageIdByRun.current.set(runId, assistantMessageId);
+    const sinceSeq = lastEventSeqByRun.current.get(runId) ?? 0;
+
     setMessages((current) =>
       current.some((item) => item.id === assistantMessageId)
         ? current
@@ -1381,33 +1478,29 @@ export function BridgeProvider({ children }: PropsWithChildren) {
 
     const abortController = new AbortController();
     activeAbortController.current = abortController;
-    activeRunId.current = run.run_id;
-    activeRunThreadId.current = run.thread_id;
-    attachedRunId.current = run.run_id;
+    activeRunId.current = runId;
+    activeRunThreadId.current = attachableRunThreadId;
+    attachedRunId.current = runId;
     setIsRunning(true);
     setIsComposerLocked(true);
 
     void client
       .streamRunEvents(
-        run.run_id,
+        runId,
         (event) => handleRunEvent(event, assistantMessageId),
         abortController.signal,
-        0
+        sinceSeq
       )
       .catch((caught) => {
         if (!abortController.signal.aborted) {
           setError(errorMessage(caught));
-          markAssistantFailed(assistantMessageId, errorMessage(caught));
         }
       })
       .finally(() => {
         const detached = detachedAbortControllers.current.delete(abortController);
-        if (!detached && activeRunId.current === run.run_id) {
-          setIsComposerLocked(false);
-          activeAbortController.current = null;
-          activeRunId.current = null;
-          activeRunThreadId.current = null;
+        if (!detached && attachedRunId.current === runId) {
           attachedRunId.current = null;
+          void resyncActiveRun();
         }
       });
 
@@ -1417,12 +1510,48 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       if (activeAbortController.current === abortController) {
         activeAbortController.current = null;
       }
-      if (attachedRunId.current === run.run_id) {
+      if (attachedRunId.current === runId) {
         attachedRunId.current = null;
       }
       setIsComposerLocked(false);
     };
-  }, [activeRuns, client, handleRunEvent, selectedThread?.id]);
+  }, [
+    attachableRunId,
+    attachableRunThreadId,
+    client,
+    handleRunEvent,
+    resyncActiveRun
+  ]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void resyncAfterResume();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [resyncAfterResume]);
+
+  // Safety net for a socket that died without an error (background pause, bridge
+  // restart, dropped Wi-Fi): while a run is active and nothing is attached,
+  // reconcile with the bridge until a stream is back.
+  useEffect(() => {
+    if (!isRunning) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      // Skip while a stream is in flight: a run that has not reported
+      // `run_started` yet would look idle to `listActiveRuns` and we must not
+      // resync (or attach twice) underneath it.
+      if (attachedRunId.current === null && activeAbortController.current === null) {
+        void resyncActiveRun();
+      }
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [isRunning, resyncActiveRun]);
 
   const addOrUpdateActivity = useCallback((activity: ActivityItem) => {
     setActivities((current) => {
@@ -1848,10 +1977,6 @@ function readConfigString(config: CodexConfigResponse | null, key: string) {
 
 function sameWorkspacePath(left: string, right: string) {
   return left.toLowerCase() === right.toLowerCase();
-}
-
-function isActiveRunStatus(status: string) {
-  return status === "starting" || status === "running" || status === "waiting_approval";
 }
 
 function isFailedStatus(status: unknown) {
