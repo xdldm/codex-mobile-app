@@ -35,6 +35,7 @@ import type {
   CodexSkill,
   DirectoryChildrenResponse,
   DirectoryRootsResponse,
+  DeepSeekBalance,
   McpResourceReadResponse,
   McpServerStatus,
   PendingApproval,
@@ -122,6 +123,7 @@ type BridgeContextValue = {
   setServiceTier: (tier: string | null) => void;
   setNetworkAccessEnabled: (enabled: boolean) => void;
   setLanguage: (preference: LanguagePreference) => void;
+  deepSeekBalance: DeepSeekBalance | null;
   setExecutionSettings: (
     settings: Partial<
       Pick<
@@ -201,6 +203,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const [models, setModels] = useState<CodexModel[]>([]);
   const [config, setConfig] = useState<CodexConfigResponse | null>(null);
   const [account, setAccount] = useState<CodexAccountResponse | null>(null);
+  const [deepSeekBalance, setDeepSeekBalance] = useState<DeepSeekBalance | null>(null);
   const [apps, setApps] = useState<CodexApp[]>([]);
   const [skills, setSkills] = useState<CodexSkill[]>([]);
   const [mcpServers, setMcpServers] = useState<McpServerStatus[]>([]);
@@ -568,6 +571,33 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     setMentionError(failures.length > 0 && !hasLoadedMentionSource ? failures.join("; ") : null);
     setIsRefreshingMentions(false);
   }, [client, selectedWorkspace?.path]);
+
+  const refreshDeepSeekBalance = useCallback(
+    async (refresh = false) => {
+      try {
+        const response = await client.deepSeekBalance(refresh);
+        setDeepSeekBalance(response.balance);
+      } catch (caught) {
+        // A 404 means the bridge predates this route: hide the row rather than
+        // showing an error the user cannot act on.
+        const status = (caught as { status?: number } | null)?.status;
+        setDeepSeekBalance(
+          status === 404
+            ? null
+            : {
+                available: false,
+                reason: errorMessage(caught),
+                fetched_at: new Date().toISOString()
+              }
+        );
+      }
+    },
+    [client]
+  );
+
+  useEffect(() => {
+    void refreshDeepSeekBalance();
+  }, [refreshDeepSeekBalance]);
 
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
@@ -1794,6 +1824,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       setServiceTier: (serviceTier) => updatePreferences({ serviceTier }),
       setNetworkAccessEnabled: (networkAccessEnabled) => updatePreferences({ networkAccessEnabled }),
       setLanguage: (language) => updatePreferences({ language }),
+      deepSeekBalance,
       setExecutionSettings: updatePreferences,
       refreshAll,
       refreshAccount,
@@ -1825,6 +1856,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     [
       activities,
       activeRuns,
+      deepSeekBalance,
       allowlistFile,
       account,
       accountError,

@@ -1,5 +1,16 @@
 import type { LanguagePreference } from "../i18n";
 
+export type DeepSeekBalance = {
+  available: boolean;
+  reason?: string;
+  is_available?: boolean;
+  currency?: string;
+  total_balance?: string;
+  granted_balance?: string;
+  topped_up_balance?: string;
+  fetched_at: string;
+};
+
 export type BridgeHealth = {
   status: "ok" | "degraded" | "error" | string;
   codex_ready: boolean;
@@ -61,6 +72,9 @@ export type BridgeCapabilities = {
   uploads?: {
     enabled: boolean;
     max_bytes: number;
+  };
+  metering?: {
+    deepseek: boolean;
   };
 };
 

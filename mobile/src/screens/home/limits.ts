@@ -2,18 +2,25 @@
 // the limits modal meters, and credit/reset labels). Pure presentation logic.
 
 import type { CodexAccountResponse, RateLimitSnapshot, RateLimitWindow } from "../../domain/bridge";
+import type { DeepSeekBalance } from "../../domain/bridge";
 import type { Translator } from "../../i18n";
 
 export function limitsMenuDetail(bridge: {
   account: CodexAccountResponse | null;
   accountError: string | null;
   isRefreshingAccount: boolean;
+  deepSeekBalance?: DeepSeekBalance | null;
 }, t: Translator) {
   if (bridge.isRefreshingAccount) {
     return t("limits.refreshingMenu");
   }
   if (bridge.accountError) {
     return t("limits.needsAttention");
+  }
+
+  const balance = bridge.deepSeekBalance;
+  if (balance?.available) {
+    return t("limits.deepseekMenu", { amount: formatBalanceAmount(balance) });
   }
   const limits = getCodexLimits(bridge.account);
   const summary = windowSummary(limits, t);
@@ -23,6 +30,12 @@ export function limitsMenuDetail(bridge: {
 
   const planType = limits?.planType ?? bridge.account?.account?.planType;
   return planType ? planTypeLabel(planType) : t("limits.usage");
+}
+
+/** "¥15.39" — currency symbol plus the provider's own decimal string. */
+export function formatBalanceAmount(balance: DeepSeekBalance) {
+  const symbol = (balance.currency ?? "CNY").toUpperCase() === "USD" ? "$" : "¥";
+  return `${symbol}${balance.total_balance ?? "0"}`;
 }
 
 /**

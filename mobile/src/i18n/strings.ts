@@ -164,6 +164,12 @@ export const STRINGS = {
   "limits.weekly": { en: "Weekly window", zh: "每周窗口" },
   "limits.weeklyShort": { en: "Weekly", zh: "每周" },
   "limits.unlimited": { en: "Unlimited", zh: "不限" },
+  "limits.deepseek": { en: "DeepSeek balance", zh: "DeepSeek 余额" },
+  "limits.deepseekMenu": { en: "DeepSeek {amount}", zh: "DeepSeek {amount}" },
+  "limits.deepseekDetail": {
+    en: "{total} total · {toppedUp} topped up · {granted} granted",
+    zh: "总 {total} · 充值 {toppedUp} · 赠送 {granted}"
+  },
   "limits.refreshingMenu": { en: "Refreshing", zh: "刷新中" },
   "limits.needsAttention": { en: "Needs attention", zh: "需要处理" },
   "limits.resetUnknown": { en: "Reset not reported", zh: "未提供重置时间" },

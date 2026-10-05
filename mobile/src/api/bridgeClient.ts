@@ -6,6 +6,7 @@ import type {
   BridgeSseEvent,
   BridgeThread,
   CodexAccountResponse,
+  DeepSeekBalance,
   CodexAppsResponse,
   CodexConfigResponse,
   CodexModel,
@@ -63,6 +64,12 @@ export class BridgeClient {
         data_base64: input.dataBase64
       })
     });
+  }
+
+  async deepSeekBalance(refresh = false) {
+    return this.requestJson<{ balance: DeepSeekBalance }>(
+      `/v1/metering/deepseek${refresh ? "?refresh=true" : ""}`
+    );
   }
 
   async listWorkspaces() {

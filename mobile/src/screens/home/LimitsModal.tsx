@@ -6,6 +6,7 @@ import { IconAction } from "../../components/IconAction";
 import type { RateLimitWindow } from "../../domain/bridge";
 import { useBridge } from "../../state/BridgeProvider";
 import { useTranslation } from "../../i18n/useTranslation";
+import { formatBalanceAmount } from "./limits";
 import { colors, spacing } from "../../theme/colors";
 import {
   clampPercent,
@@ -82,6 +83,21 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
             <View style={styles.creditsRow}>
               <Text style={styles.creditsLabel}>{t("limits.credits")}</Text>
               <Text style={styles.creditsValue}>{creditsLabel(credits, t)}</Text>
+            </View>
+          ) : null}
+
+          {bridge.deepSeekBalance ? (
+            <View style={styles.creditsRow}>
+              <Text style={styles.creditsLabel}>{t("limits.deepseek")}</Text>
+              <Text style={styles.creditsValue}>
+                {bridge.deepSeekBalance.available
+                  ? t("limits.deepseekDetail", {
+                      total: formatBalanceAmount(bridge.deepSeekBalance),
+                      toppedUp: bridge.deepSeekBalance.topped_up_balance ?? "-",
+                      granted: bridge.deepSeekBalance.granted_balance ?? "-"
+                    })
+                  : bridge.deepSeekBalance.reason ?? t("limits.noData")}
+              </Text>
             </View>
           ) : null}
 
