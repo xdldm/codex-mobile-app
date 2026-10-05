@@ -124,6 +124,7 @@ type BridgeContextValue = {
   setNetworkAccessEnabled: (enabled: boolean) => void;
   setLanguage: (preference: LanguagePreference) => void;
   deepSeekBalance: DeepSeekBalance | null;
+  refreshDeepSeekBalance: (refresh?: boolean) => Promise<void>;
   waitingForBridge: boolean;
   setExecutionSettings: (
     settings: Partial<
@@ -590,7 +591,9 @@ export function BridgeProvider({ children }: PropsWithChildren) {
             ? null
             : {
                 available: false,
-                reason: errorMessage(caught),
+                // No HTTP status means the request never reached the bridge
+                // (tunnel down). Show that instead of a raw Java exception.
+                reason: status === undefined ? "bridge_unreachable" : errorMessage(caught),
                 fetched_at: new Date().toISOString()
               }
         );
@@ -763,6 +766,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
         if (waitingForBridge) {
           // The tunnel just came up: pull everything now that we can reach it.
           setWaitingForBridge(false);
+          void refreshDeepSeekBalance();
           void refreshAll();
         }
       } catch {
@@ -783,7 +787,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
         clearTimeout(timer);
       }
     };
-  }, [client, isBooting, refreshAll, waitingForBridge]);
+  }, [client, isBooting, refreshAll, refreshDeepSeekBalance, waitingForBridge]);
 
   const refreshWorkspaces = useCallback(async () => {
     setIsRefreshing(true);
@@ -1871,6 +1875,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       setNetworkAccessEnabled: (networkAccessEnabled) => updatePreferences({ networkAccessEnabled }),
       setLanguage: (language) => updatePreferences({ language }),
       deepSeekBalance,
+      refreshDeepSeekBalance,
       waitingForBridge,
       setExecutionSettings: updatePreferences,
       refreshAll,
@@ -1904,6 +1909,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       activities,
       activeRuns,
       deepSeekBalance,
+      refreshDeepSeekBalance,
       waitingForBridge,
       allowlistFile,
       account,

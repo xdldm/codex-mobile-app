@@ -47,7 +47,10 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
               icon={RefreshCcw}
               label={t("limits.refresh")}
               disabled={bridge.isRefreshingAccount}
-              onPress={() => void bridge.refreshAccount()}
+              onPress={() => {
+                void bridge.refreshAccount();
+                void bridge.refreshDeepSeekBalance(true);
+              }}
             />
             <IconAction icon={X} label={t("limits.close")} onPress={onClose} />
           </View>
@@ -59,7 +62,7 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
             </View>
           ) : null}
 
-          {bridge.accountError ? (
+          {bridge.accountError && !bridge.deepSeekBalance?.available ? (
             <View style={styles.limitsError}>
               <Text style={styles.limitsErrorText}>{bridge.accountError}</Text>
             </View>
@@ -70,7 +73,7 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
               <LimitMeter label={t("limits.fiveHour")} limitWindow={limits.primary} />
               <LimitMeter label={t("limits.weekly")} limitWindow={limits.secondary} />
             </View>
-          ) : bridge.isRefreshingAccount ? null : (
+          ) : bridge.isRefreshingAccount || bridge.deepSeekBalance?.available ? null : (
             <View style={styles.limitsEmpty}>
               <Text style={styles.limitsEmptyTitle}>{t("limits.unavailableTitle")}</Text>
               <Text style={styles.limitsEmptyText}>
@@ -96,7 +99,9 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
                       toppedUp: bridge.deepSeekBalance.topped_up_balance ?? "-",
                       granted: bridge.deepSeekBalance.granted_balance ?? "-"
                     })
-                  : bridge.deepSeekBalance.reason ?? t("limits.noData")}
+                  : bridge.deepSeekBalance.reason === "bridge_unreachable"
+                    ? t("limits.bridgeUnreachable")
+                    : bridge.deepSeekBalance.reason ?? t("limits.noData")}
               </Text>
             </View>
           ) : null}

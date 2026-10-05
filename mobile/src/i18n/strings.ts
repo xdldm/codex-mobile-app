@@ -177,6 +177,10 @@ export const STRINGS = {
   },
   "limits.refreshingMenu": { en: "Refreshing", zh: "刷新中" },
   "limits.needsAttention": { en: "Needs attention", zh: "需要处理" },
+  "limits.bridgeUnreachable": {
+    en: "Cannot reach the bridge — check the WireGuard tunnel.",
+    zh: "无法连接 bridge，请检查 WireGuard 隧道。"
+  },
   "limits.resetUnknown": { en: "Reset not reported", zh: "未提供重置时间" },
   "limits.unavailable": { en: "Unavailable", zh: "不可用" },
   "limits.refreshing": { en: "Refreshing limits...", zh: "正在刷新额度…" },
