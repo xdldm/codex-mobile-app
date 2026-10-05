@@ -6,6 +6,7 @@ import type { BridgeThreadQuery, BridgeThreadService } from "./appServer/types.j
 import { getBridgeConfig, type BridgeConfig } from "./config.js";
 import { AppError, getErrorPayload } from "./errors.js";
 import { FileSystemService } from "./filesystem/FileSystemService.js";
+import { DeepSeekBalanceService } from "./metering/DeepSeekBalanceService.js";
 import { SdkCodexRuntime } from "./runtime/SdkCodexRuntime.js";
 import type { CodexRuntimeHealth } from "./runtime/types.js";
 import { RunRegistry } from "./runs/RunRegistry.js";
@@ -35,6 +36,7 @@ export type AppDependencies = {
   fileSystemService?: FileSystemService;
   appServerClient?: AppServerClient;
   uploadService?: UploadService;
+  deepSeekBalanceService?: DeepSeekBalanceService;
 };
 
 export function createApp(deps: AppDependencies = {}) {
@@ -42,6 +44,9 @@ export function createApp(deps: AppDependencies = {}) {
   const workspaceService = deps.workspaceService ?? new WorkspaceService(config);
   const uploadService =
     deps.uploadService ?? new UploadService({ uploadDir: config.uploadDir, maxBytes: config.uploadMaxBytes });
+  const deepSeekBalanceService =
+    deps.deepSeekBalanceService ??
+    new DeepSeekBalanceService({ keyFile: config.deepseekKeyFile, baseUrl: config.deepseekBaseUrl });
   const threadService =
     deps.threadService ??
     createDefaultThreadService(config, workspaceService, deps.appServerClient, uploadService);
@@ -66,6 +71,8 @@ export function createApp(deps: AppDependencies = {}) {
         workspaceService,
         fileSystemService,
         uploadService
+        ,
+        deepSeekBalanceService
       );
     } catch (error) {
       sendError(res, error);
@@ -85,7 +92,8 @@ async function routeRequest(
   runRegistry: RunRegistry,
   workspaceService: WorkspaceService,
   fileSystemService: FileSystemService,
-  uploadService: UploadService
+  uploadService: UploadService,
+  deepSeekBalanceService: DeepSeekBalanceService
 ) {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -250,6 +258,13 @@ async function routeRequest(
       dataBase64: body.data_base64
     });
     sendJson(res, 201, { attachment, max_bytes: uploadService.maxBytes });
+    return;
+  }
+
+  if (method === "GET" && pathname === "/v1/metering/deepseek") {
+    sendJson(res, 200, {
+      balance: await deepSeekBalanceService.balance(url.searchParams.get("refresh") === "true")
+    });
     return;
   }
 

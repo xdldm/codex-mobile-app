@@ -261,6 +261,8 @@ function testConfig(uploadDir = path.join(os.tmpdir(), "codex-mobile-test-upload
     uploadMaxBytes: 1024 * 1024,
     runBufferEvents: 5000,
     runRetentionMs: 300_000,
+    deepseekKeyFile: "/tmp/codex-mobile-test-deepseek.key",
+    deepseekBaseUrl: "https://api.deepseek.com",
     defaultWorkspace: process.cwd(),
     defaultSkipGitRepoCheck: true,
     defaultModel: null,
