@@ -116,9 +116,17 @@ export function HomeScreen() {
   }, [bridge.messages]);
 
   const scrollToBottom = useCallback((animated: boolean) => {
-    requestAnimationFrame(() => {
-      messageListRef.current?.scrollToEnd({ animated });
-    });
+    // Markdown blocks (code fences, images) keep growing for a moment after the
+    // first layout, so retry: the first pass alone lands short of the bottom.
+    const attempt = (index: number) => {
+      requestAnimationFrame(() => {
+        messageListRef.current?.scrollToEnd({ animated: animated && index === 0 });
+      });
+      if (index < 2) {
+        setTimeout(() => attempt(index + 1), 160);
+      }
+    };
+    attempt(0);
   }, []);
 
   // A new conversation always starts pinned to the newest message, even if the

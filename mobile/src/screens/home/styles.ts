@@ -26,10 +26,10 @@ export const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }]
   },
   header: {
-    minHeight: 68,
+    minHeight: 48,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm
@@ -155,8 +155,13 @@ export const styles = StyleSheet.create({
     borderColor: colors.accent
   },
   assistantBubble: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border
+    // ChatGPT-style: the answer is plain text on the page, not a card, so both
+    // sides keep the same margin as the user's bubble.
+    maxWidth: "100%",
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: colors.background
   },
   messageHeader: {
     minHeight: 18,
