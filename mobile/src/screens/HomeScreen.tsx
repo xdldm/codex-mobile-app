@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import {
+  ChevronDown,
   FolderPlus,
   FolderGit2,
   ListTree,
@@ -63,6 +64,9 @@ export function HomeScreen() {
   const [limitsVisible, setLimitsVisible] = useState(false);
   const [folderPickerVisible, setFolderPickerVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  // Mirrors `stickToBottom` for rendering: the jump-to-bottom button only shows
+  // while the user is reading somewhere above the newest message.
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messageListRef = useRef<FlatList<ChatMessage> | null>(null);
   const mentionLoadRequested = useRef(false);
   // Sticky bottom: follow new output only while the user is already at the
@@ -200,6 +204,7 @@ export function HomeScreen() {
     if (stickToBottom.current) {
       pendingBottomScroll.current = false;
     }
+    setShowScrollButton(!stickToBottom.current);
   }, []);
 
   const userScrolling = useRef(false);
@@ -372,6 +377,23 @@ export function HomeScreen() {
             />
           }
         />
+
+        {showScrollButton ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("home.scrollToBottom")}
+            onPress={() => {
+              stickToBottom.current = true;
+              pendingBottomScroll.current = false;
+              settleTicks.current = 0;
+              setShowScrollButton(false);
+              settleBottom();
+            }}
+            style={({ pressed }) => [styles.jumpToBottom, pressed && styles.jumpToBottomPressed]}
+          >
+            <ChevronDown size={20} color={colors.text} />
+          </Pressable>
+        ) : null}
 
         {mentionTrigger ? (
           <MentionPalette

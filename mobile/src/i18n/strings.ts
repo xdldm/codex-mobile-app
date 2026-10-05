@@ -37,6 +37,7 @@ export const STRINGS = {
   "home.cancelRun": { en: "Cancel", zh: "取消" },
   "home.attachedPromptOne": { en: "Please review the attached file.", zh: "请查看附件。" },
   "home.attachedPromptMany": { en: "Please review the attached files.", zh: "请查看这些附件。" },
+  "home.scrollToBottom": { en: "Scroll to bottom", zh: "回到底部" },
 
   "menu.title": { en: "Menu", zh: "菜单" },
   "menu.close": { en: "Close menu", zh: "关闭菜单" },

@@ -25,6 +25,28 @@ export const styles = StyleSheet.create({
     opacity: 0.78,
     transform: [{ scale: 0.98 }]
   },
+  jumpToBottom: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3,
+    shadowColor: "#101828",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }
+  },
+  jumpToBottomPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.96 }]
+  },
   header: {
     minHeight: 48,
     paddingHorizontal: spacing.lg,
