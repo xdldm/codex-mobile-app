@@ -7,12 +7,14 @@ import { IconAction } from "../components/IconAction";
 import { Screen } from "../components/Screen";
 import type { WorkspaceEntry } from "../domain/bridge";
 import { useBridge } from "../state/BridgeProvider";
+import { useTranslation } from "../i18n/useTranslation";
 import { colors, radii, spacing } from "../theme/colors";
 import { fontWeights } from "../theme/typography";
 import { compactPath } from "../utils/format";
 
 export function RepositoriesScreen() {
   const bridge = useBridge();
+  const t = useTranslation();
   const [search, setSearch] = useState("");
   const [pathInput, setPathInput] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -45,11 +47,11 @@ export function RepositoriesScreen() {
     setIsAdding(false);
 
     if (!result) {
-      setAddError("Could not add repository.");
+      setAddError(t("repositories.addFailed"));
       return;
     }
     if (!result.supported) {
-      setAddError(result.reason ?? "Allowlist is read-only.");
+      setAddError(result.reason ?? t("repositories.allowlistReadOnly"));
       return;
     }
     if (result.reason) {
@@ -64,12 +66,16 @@ export function RepositoriesScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>Repositories</Text>
+            <Text style={styles.title}>{t("repositories.title")}</Text>
           <Text numberOfLines={1} style={styles.subtitle}>
-            {bridge.allowlistFile ?? "Workspace allowlist"}
+            {bridge.allowlistFile ?? t("repositories.allowlistFile")}
           </Text>
         </View>
-        <IconAction icon={RefreshCcw} label="Refresh" onPress={() => void bridge.refreshWorkspaces()} />
+        <IconAction
+          icon={RefreshCcw}
+          label={t("common.refresh")}
+          onPress={() => void bridge.refreshWorkspaces()}
+        />
       </View>
 
       <View style={styles.addBar}>
@@ -89,14 +95,14 @@ export function RepositoriesScreen() {
               void handleAddRepository();
             }
           }}
-          placeholder="Desktop repository path"
+        placeholder={t("repositories.pathPlaceholder")}
           placeholderTextColor={colors.textSubtle}
           returnKeyType="done"
           style={[styles.addInput, !canAdd && styles.inputDisabled]}
         />
         <IconAction
           icon={FolderPlus}
-          label="Add repository"
+          label={t("repositories.add")}
           variant="filled"
           disabled={!canSubmitAdd}
           onPress={() => void handleAddRepository()}
@@ -116,7 +122,7 @@ export function RepositoriesScreen() {
       <TextInput
         value={search}
         onChangeText={setSearch}
-        placeholder="Search repositories"
+        placeholder={t("repositories.search")}
         placeholderTextColor={colors.textSubtle}
         style={styles.search}
       />
@@ -137,7 +143,7 @@ export function RepositoriesScreen() {
             style={styles.undoButton}
           >
             <RotateCcw size={16} color={colors.accent} />
-            <Text style={styles.undoButtonText}>Undo</Text>
+            <Text style={styles.undoButtonText}>{t("common.undo")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -154,7 +160,7 @@ export function RepositoriesScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No repositories</Text>
+            <Text style={styles.emptyTitle}>{t("repositories.empty")}</Text>
           </View>
         }
       />
@@ -169,6 +175,7 @@ function RepositoryRow({
   workspace: WorkspaceEntry;
   onRemoved: (workspace: WorkspaceEntry) => void;
 }) {
+  const t = useTranslation();
   const bridge = useBridge();
   const active = bridge.selectedWorkspace?.path === workspace.path;
   const removable = workspace.source === "file" && bridge.capabilities.workspaces.remove;
@@ -197,7 +204,7 @@ function RepositoryRow({
         {active ? <Check size={20} color={colors.accent} /> : null}
         <IconAction
           icon={Trash2}
-          label="Remove from allowlist"
+          label={t("repositories.remove")}
           disabled={!removable}
           onPress={() => {
             void bridge.removeWorkspace(workspace).then((result) => {

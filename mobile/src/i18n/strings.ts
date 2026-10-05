@@ -157,6 +157,10 @@ export const STRINGS = {
   "limits.unavailableTitle": { en: "Limits unavailable", zh: "额度不可用" },
   "limits.credits": { en: "Credits", zh: "额度" },
   "limits.noData": { en: "No data", zh: "无数据" },
+  "limits.noDataHint": {
+    en: "The bridge has not received rate limit data for this account yet.",
+    zh: "bridge 还没有收到该账号的额度数据。"
+  },
 
   "mention.apps": { en: "Apps", zh: "应用" },
   "mention.skills": { en: "Skills", zh: "技能" },

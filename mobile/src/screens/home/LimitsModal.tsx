@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconAction } from "../../components/IconAction";
 import type { RateLimitWindow } from "../../domain/bridge";
 import { useBridge } from "../../state/BridgeProvider";
+import { useTranslation } from "../../i18n/useTranslation";
 import { colors, spacing } from "../../theme/colors";
 import {
   clampPercent,
@@ -20,6 +21,7 @@ import { styles } from "./styles";
 
 export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const bridge = useBridge();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const limits = getCodexLimits(bridge.account);
   const account = bridge.account?.account ?? null;
@@ -35,24 +37,24 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
         <View style={styles.limitsPanel}>
           <View style={styles.limitsHeader}>
             <View style={styles.limitsTitleWrap}>
-              <Text style={styles.limitsTitle}>Limits</Text>
+              <Text style={styles.limitsTitle}>{t("limits.title")}</Text>
               <Text numberOfLines={1} style={styles.limitsSubtitle}>
-                {subtitle || "Codex account"}
+                {subtitle || t("limits.account")}
               </Text>
             </View>
             <IconAction
               icon={RefreshCcw}
-              label="Refresh limits"
+              label={t("limits.refresh")}
               disabled={bridge.isRefreshingAccount}
               onPress={() => void bridge.refreshAccount()}
             />
-            <IconAction icon={X} label="Close limits" onPress={onClose} />
+            <IconAction icon={X} label={t("limits.close")} onPress={onClose} />
           </View>
 
           {bridge.isRefreshingAccount ? (
             <View style={styles.limitsLoading}>
               <ActivityIndicator color={colors.accent} />
-              <Text style={styles.limitsLoadingText}>Refreshing limits...</Text>
+              <Text style={styles.limitsLoadingText}>{t("limits.refreshing")}</Text>
             </View>
           ) : null}
 
@@ -64,21 +66,21 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
 
           {limits ? (
             <View style={styles.limitMeters}>
-              <LimitMeter label="5h" limitWindow={limits.primary} />
-              <LimitMeter label="Weekly" limitWindow={limits.secondary} />
+              <LimitMeter label={t("limits.fiveHour")} limitWindow={limits.primary} />
+              <LimitMeter label={t("limits.weekly")} limitWindow={limits.secondary} />
             </View>
           ) : bridge.isRefreshingAccount ? null : (
             <View style={styles.limitsEmpty}>
-              <Text style={styles.limitsEmptyTitle}>Limits unavailable</Text>
+              <Text style={styles.limitsEmptyTitle}>{t("limits.unavailableTitle")}</Text>
               <Text style={styles.limitsEmptyText}>
-                The bridge has not received rate limit data for this account yet.
+                {t("limits.noDataHint")}
               </Text>
             </View>
           )}
 
           {credits ? (
             <View style={styles.creditsRow}>
-              <Text style={styles.creditsLabel}>Credits</Text>
+              <Text style={styles.creditsLabel}>{t("limits.credits")}</Text>
               <Text style={styles.creditsValue}>{creditsLabel(credits)}</Text>
             </View>
           ) : null}
@@ -95,12 +97,13 @@ export function LimitsModal({ visible, onClose }: { visible: boolean; onClose: (
 }
 
 function LimitMeter({ label, limitWindow }: { label: string; limitWindow: RateLimitWindow | null }) {
+  const t = useTranslation();
   if (!limitWindow) {
     return (
       <View style={styles.limitMeter}>
         <View style={styles.limitMeterHeader}>
           <Text style={styles.limitMeterTitle}>{label}</Text>
-          <Text style={styles.limitUnavailable}>No data</Text>
+          <Text style={styles.limitUnavailable}>{t("limits.noData")}</Text>
         </View>
       </View>
     );

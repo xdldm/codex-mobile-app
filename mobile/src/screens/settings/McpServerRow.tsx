@@ -2,6 +2,7 @@ import { Pressable, Text, View } from "react-native";
 
 import type { McpResource, McpServerStatus } from "../../domain/bridge";
 import { styles } from "./styles";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export function McpServerRow({
   server,
@@ -14,6 +15,7 @@ export function McpServerRow({
   onToggle: () => void;
   onReadResource: (resource: McpResource) => void;
 }) {
+  const t = useTranslation();
   const resourceCount = server.resources.length;
   const templateCount = server.resourceTemplates.length;
   const toolCount = Object.keys(server.tools ?? {}).length;
@@ -29,7 +31,7 @@ export function McpServerRow({
             {server.authStatus} / {resourceCount} resources / {templateCount} templates / {toolCount} tools
           </Text>
         </View>
-        <Text style={styles.mcpToggle}>{expanded ? "Hide" : "Show"}</Text>
+        <Text style={styles.mcpToggle}>{expanded ? t("common.hide") : t("common.show")}</Text>
       </Pressable>
       {expanded ? (
         <View style={styles.mcpResourceList}>
@@ -49,7 +51,7 @@ export function McpServerRow({
               </Pressable>
             ))
           ) : (
-            <Text style={styles.mcpEmptyText}>No readable resources reported.</Text>
+            <Text style={styles.mcpEmptyText}>{t("settings.mcpNoResources")}</Text>
           )}
           {server.resourceTemplates.length > 0 ? (
             <Text numberOfLines={3} style={styles.mcpTemplateText}>

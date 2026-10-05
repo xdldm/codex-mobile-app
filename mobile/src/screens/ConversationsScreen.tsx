@@ -7,12 +7,14 @@ import { IconAction } from "../components/IconAction";
 import { Screen } from "../components/Screen";
 import type { BridgeThread } from "../domain/bridge";
 import { useBridge } from "../state/BridgeProvider";
+import { useTranslation } from "../i18n/useTranslation";
 import { colors, radii, spacing } from "../theme/colors";
 import { fontWeights } from "../theme/typography";
 import { formatDateTime } from "../utils/format";
 
 export function ConversationsScreen() {
   const bridge = useBridge();
+  const t = useTranslation();
   const [search, setSearch] = useState("");
   const [lastArchived, setLastArchived] = useState<BridgeThread | null>(null);
   const filtered = useMemo(() => {
@@ -32,15 +34,15 @@ export function ConversationsScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>Conversations</Text>
+          <Text style={styles.title}>{t("conversations.title")}</Text>
           <Text numberOfLines={1} style={styles.subtitle}>
-            {bridge.selectedWorkspace?.name ?? "No repository"}
+            {bridge.selectedWorkspace?.name ?? t("conversations.noRepository")}
           </Text>
         </View>
-        <IconAction icon={RefreshCcw} label="Refresh" onPress={() => void bridge.refreshThreads()} />
+        <IconAction icon={RefreshCcw} label={t("common.refresh")} onPress={() => void bridge.refreshThreads()} />
         <IconAction
           icon={MessageSquarePlus}
-          label="New conversation"
+          label={t("home.newConversation")}
           variant="filled"
           onPress={() => {
             void bridge.createNewThread().then(() => router.back());
@@ -51,7 +53,7 @@ export function ConversationsScreen() {
       <TextInput
         value={search}
         onChangeText={setSearch}
-        placeholder="Search conversations"
+        placeholder={t("conversations.search")}
         placeholderTextColor={colors.textSubtle}
         style={styles.search}
       />
@@ -59,7 +61,7 @@ export function ConversationsScreen() {
       {lastArchived ? (
         <View style={styles.undoBand}>
           <Text numberOfLines={1} style={styles.undoText}>
-            Archived {lastArchived.title || "Untitled"}
+            {t("conversations.archived", { title: lastArchived.title || t("common.untitled") })}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -71,7 +73,7 @@ export function ConversationsScreen() {
             style={styles.undoButton}
           >
             <RotateCcw size={16} color={colors.accent} />
-            <Text style={styles.undoButtonText}>Undo</Text>
+            <Text style={styles.undoButtonText}>{t("common.undo")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -88,7 +90,7 @@ export function ConversationsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No conversations</Text>
+            <Text style={styles.emptyTitle}>{t("conversations.empty")}</Text>
           </View>
         }
       />
@@ -103,6 +105,7 @@ function ConversationRow({
   thread: BridgeThread;
   onArchived: (thread: BridgeThread) => void;
 }) {
+  const t = useTranslation();
   const bridge = useBridge();
   const active = bridge.selectedThread?.id === thread.id;
   const [renaming, setRenaming] = useState(false);
@@ -117,13 +120,13 @@ function ConversationRow({
           value={draft}
           onChangeText={setDraft}
           autoFocus
-          placeholder="Conversation title"
+          placeholder={t("conversations.titlePlaceholder")}
           placeholderTextColor={colors.textSubtle}
           style={styles.renameInput}
         />
         <IconAction
           icon={Save}
-          label="Save title"
+          label={t("conversations.saveTitle")}
           variant="filled"
           disabled={!draft.trim()}
           onPress={() => {
@@ -136,7 +139,7 @@ function ConversationRow({
         />
         <IconAction
           icon={X}
-          label="Cancel rename"
+          label={t("conversations.cancelRename")}
           onPress={() => {
             setDraft(thread.title || "");
             setRenaming(false);
@@ -155,7 +158,7 @@ function ConversationRow({
         style={({ pressed }) => [styles.rowBody, pressed && styles.rowPressed]}
       >
         <Text numberOfLines={2} style={styles.rowTitle}>
-          {thread.title || "Untitled"}
+          {thread.title || t("common.untitled")}
         </Text>
         <Text numberOfLines={2} style={styles.rowPreview}>
           {thread.preview || thread.id}
@@ -169,13 +172,13 @@ function ConversationRow({
         {active ? <Check size={20} color={colors.accent} /> : null}
         <IconAction
           icon={Pencil}
-          label="Rename"
+          label={t("common.rename")}
           disabled={!canRename}
           onPress={() => setRenaming(true)}
         />
         <IconAction
           icon={Archive}
-          label="Archive"
+          label={t("common.archive")}
           disabled={!canArchive}
           onPress={() => {
             void bridge.archiveThread(thread).then((result) => {

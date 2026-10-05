@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconAction } from "../../components/IconAction";
 import type { DirectoryChildrenResponse, DirectoryEntry } from "../../domain/bridge";
 import { useBridge } from "../../state/BridgeProvider";
+import { useTranslation } from "../../i18n/useTranslation";
 import { colors, radii, spacing } from "../../theme/colors";
 import { fontWeights } from "../../theme/typography";
 import { compactPath } from "../../utils/format";
@@ -35,6 +36,7 @@ type FolderPickerModalProps = {
 
 export function FolderPickerModal({ visible, onClose }: FolderPickerModalProps) {
   const bridge = useBridge();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const [roots, setRoots] = useState<DirectoryEntry[]>([]);
   const [directory, setDirectory] = useState<DirectoryChildrenResponse | null>(null);
@@ -104,11 +106,11 @@ export function FolderPickerModal({ visible, onClose }: FolderPickerModalProps) 
     setAdding(false);
 
     if (!result) {
-      setAddError("Could not add folder.");
+      setAddError(t("folderPicker.addFailed"));
       return;
     }
     if (!result.supported) {
-      setAddError(result.reason ?? "Allowlist is read-only.");
+      setAddError(result.reason ?? t("repositories.allowlistReadOnly"));
       return;
     }
     if (result.reason) {
@@ -152,21 +154,21 @@ export function FolderPickerModal({ visible, onClose }: FolderPickerModalProps) 
               )}
             </Pressable>
             <View style={pickerStyles.titleWrap}>
-              <Text style={pickerStyles.title}>Add folder</Text>
+              <Text style={pickerStyles.title}>{t("home.addFolder")}</Text>
               <Text numberOfLines={1} style={pickerStyles.pathText}>
-                {currentPath ? compactPath(currentPath, 64) : "Local disks"}
+                {currentPath ? compactPath(currentPath, 64) : t("folderPicker.localDisks")}
               </Text>
             </View>
-            <IconAction icon={X} label="Close folder picker" onPress={onClose} />
+            <IconAction icon={X} label={t("folderPicker.close")} onPress={onClose} />
           </View>
 
           <View style={pickerStyles.pathBand}>
             <Text numberOfLines={1} style={pickerStyles.pathBandText}>
-              {currentPath ? currentPath : "Local disks"}
+              {currentPath ? currentPath : t("folderPicker.localDisks")}
             </Text>
             <IconAction
               icon={FolderPlus}
-              label="Add selected folder"
+              label={t("folderPicker.addSelected")}
               variant="filled"
               disabled={!currentPath || !canAdd || adding}
               onPress={() => {
@@ -204,7 +206,7 @@ export function FolderPickerModal({ visible, onClose }: FolderPickerModalProps) 
               )}
               ListEmptyComponent={
                 <View style={pickerStyles.empty}>
-                  <Text style={pickerStyles.emptyText}>No folders</Text>
+                  <Text style={pickerStyles.emptyText}>{t("folderPicker.empty")}</Text>
                 </View>
               }
             />
@@ -229,14 +231,14 @@ export function FolderPickerModal({ visible, onClose }: FolderPickerModalProps) 
                 }
               }}
               onSubmitEditing={() => void addFolder(manualPath)}
-              placeholder="Paste path"
+              placeholder={t("folderPicker.pastePath")}
               placeholderTextColor={colors.textSubtle}
               returnKeyType="done"
               style={[pickerStyles.manualInput, !canAdd && pickerStyles.disabled]}
             />
             <IconAction
               icon={FolderPlus}
-              label="Add pasted path"
+              label={t("folderPicker.addPasted")}
               variant="filled"
               disabled={!manualPath.trim() || !canAdd || adding}
               onPress={() => void addFolder(manualPath)}
