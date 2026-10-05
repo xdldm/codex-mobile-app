@@ -500,6 +500,12 @@ export const styles = StyleSheet.create({
     opacity: 0.78,
     transform: [{ scale: 0.98 }]
   },
+  composerError: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: fontWeights.body,
+    paddingBottom: spacing.xs
+  },
   input: {
     minHeight: 44,
     maxHeight: 118,
@@ -532,6 +538,23 @@ export const styles = StyleSheet.create({
   },
   mentionChipText: {
     color: colors.accent,
+    fontSize: 12,
+    fontWeight: fontWeights.action
+  },
+  attachmentChip: {
+    maxWidth: 200,
+    minHeight: 28,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  attachmentChipText: {
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: fontWeights.action
   },

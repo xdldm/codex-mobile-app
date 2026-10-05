@@ -12,6 +12,7 @@ import { RunRegistry } from "./runs/RunRegistry.js";
 import { SseWriter } from "./sse.js";
 import { InMemoryThreadStore } from "./threads/InMemoryThreadStore.js";
 import { ThreadService } from "./threads/ThreadService.js";
+import { UploadService } from "./uploads/UploadService.js";
 import { WorkspaceService } from "./workspaces/WorkspaceService.js";
 import {
   ArchiveThreadBodySchema,
@@ -21,6 +22,7 @@ import {
   McpResourceReadBodySchema,
   RenameThreadBodySchema,
   RunStreamBodySchema,
+  UploadBodySchema,
   WorkspacePathBodySchema,
   WriteConfigBodySchema
 } from "./validation.js";
@@ -32,14 +34,17 @@ export type AppDependencies = {
   workspaceService?: WorkspaceService;
   fileSystemService?: FileSystemService;
   appServerClient?: AppServerClient;
+  uploadService?: UploadService;
 };
 
 export function createApp(deps: AppDependencies = {}) {
   const config = deps.config ?? getBridgeConfig();
   const workspaceService = deps.workspaceService ?? new WorkspaceService(config);
+  const uploadService =
+    deps.uploadService ?? new UploadService({ uploadDir: config.uploadDir, maxBytes: config.uploadMaxBytes });
   const threadService =
     deps.threadService ??
-    createDefaultThreadService(config, workspaceService, deps.appServerClient);
+    createDefaultThreadService(config, workspaceService, deps.appServerClient, uploadService);
   const runRegistry = deps.runRegistry ?? new RunRegistry(threadService);
   const fileSystemService = deps.fileSystemService ?? new FileSystemService();
 
@@ -47,7 +52,16 @@ export function createApp(deps: AppDependencies = {}) {
     applyCorsHeaders(res);
 
     try {
-      await routeRequest(req, res, config, threadService, runRegistry, workspaceService, fileSystemService);
+      await routeRequest(
+        req,
+        res,
+        config,
+        threadService,
+        runRegistry,
+        workspaceService,
+        fileSystemService,
+        uploadService
+      );
     } catch (error) {
       sendError(res, error);
     }
@@ -65,7 +79,8 @@ async function routeRequest(
   threadService: BridgeThreadService,
   runRegistry: RunRegistry,
   workspaceService: WorkspaceService,
-  fileSystemService: FileSystemService
+  fileSystemService: FileSystemService,
+  uploadService: UploadService
 ) {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -85,7 +100,7 @@ async function routeRequest(
   }
 
   if (method === "GET" && pathname === "/v1/capabilities") {
-    sendJson(res, 200, buildCapabilitiesResponse(threadService, workspaceService));
+    sendJson(res, 200, buildCapabilitiesResponse(threadService, workspaceService, uploadService));
     return;
   }
 
@@ -219,6 +234,17 @@ async function routeRequest(
 
   if (method === "GET" && pathname === "/v1/filesystem/children") {
     sendJson(res, 200, fileSystemService.listChildren(url.searchParams.get("path")));
+    return;
+  }
+
+  if (method === "POST" && pathname === "/v1/uploads") {
+    const body = UploadBodySchema.parse(await readJson(req, uploadBodyLimit(config.uploadMaxBytes)));
+    const attachment = uploadService.save({
+      name: body.name ?? null,
+      mimeType: body.mime_type ?? null,
+      dataBase64: body.data_base64
+    });
+    sendJson(res, 201, { attachment, max_bytes: uploadService.maxBytes });
     return;
   }
 
@@ -366,7 +392,8 @@ function buildHealthResponse(
 
 function buildCapabilitiesResponse(
   threadService: BridgeThreadService,
-  workspaceService: WorkspaceService
+  workspaceService: WorkspaceService,
+  uploadService: UploadService
 ) {
   return {
     threads: {
@@ -384,7 +411,11 @@ function buildCapabilitiesResponse(
     skills: {
       list: typeof threadService.listSkills === "function"
     },
-    workspaces: workspaceService.capabilities()
+    workspaces: workspaceService.capabilities(),
+    uploads: {
+      enabled: true,
+      max_bytes: uploadService.maxBytes
+    }
   };
 }
 
@@ -432,13 +463,15 @@ async function streamRunEvents(
 function createDefaultThreadService(
   config: BridgeConfig,
   workspaceService: WorkspaceService,
-  appServerClient: AppServerClient | undefined
+  appServerClient: AppServerClient | undefined,
+  uploadService: UploadService
 ): BridgeThreadService {
   if (config.runtime === "app-server") {
     return new AppServerBridgeService({
       config,
       client: appServerClient ?? new AppServerClient(),
-      workspaceService
+      workspaceService,
+      uploadService
     });
   }
 
@@ -466,6 +499,11 @@ function parseThreadQuery(url: URL): BridgeThreadQuery {
     searchTerm: url.searchParams.get("search"),
     archived: parseOptionalBoolean(url.searchParams.get("archived"))
   };
+}
+
+function uploadBodyLimit(maxBytes: number) {
+  // base64 inflates the payload by roughly 4/3; leave headroom for the JSON envelope.
+  return Math.ceil((maxBytes * 4) / 3) + 64 * 1024;
 }
 
 function parsePositiveInt(value: string | null) {
@@ -515,15 +553,21 @@ function requireCapability<T extends keyof BridgeThreadService>(
   return value.bind(service) as NonNullable<BridgeThreadService[T]>;
 }
 
-async function readJson(req: IncomingMessage) {
+const DEFAULT_JSON_LIMIT_BYTES = 1024 * 1024;
+
+async function readJson(req: IncomingMessage, maxBytes = DEFAULT_JSON_LIMIT_BYTES) {
   const chunks: Buffer[] = [];
   let size = 0;
 
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.byteLength;
-    if (size > 1024 * 1024) {
-      throw new AppError(413, "payload_too_large", "JSON body is larger than 1 MiB.");
+    if (size > maxBytes) {
+      throw new AppError(
+        413,
+        "payload_too_large",
+        `JSON body is larger than ${maxBytes} bytes.`
+      );
     }
     chunks.push(buffer);
   }

@@ -1,7 +1,10 @@
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 
 const RuntimeSchema = z.enum(["app-server", "sdk"]);
+
+const DEFAULT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
 
 const EnvSchema = z.object({
   CODEX_BRIDGE_HOST: z.string().default("127.0.0.1"),
@@ -9,6 +12,12 @@ const EnvSchema = z.object({
   CODEX_BRIDGE_RUNTIME: RuntimeSchema.default("app-server"),
   CODEX_BRIDGE_WORKSPACE_ALLOWLIST: z.string().optional(),
   CODEX_BRIDGE_WORKSPACE_ALLOWLIST_FILE: z.string().optional(),
+  CODEX_BRIDGE_UPLOAD_DIR: z.string().optional(),
+  CODEX_BRIDGE_UPLOAD_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_UPLOAD_MAX_BYTES),
   CODEX_BRIDGE_SKIP_GIT_REPO_CHECK: z
     .string()
     .optional()
@@ -25,6 +34,8 @@ export type BridgeConfig = {
   runtime: BridgeRuntime;
   workspaceAllowlist: string[];
   workspaceAllowlistFile: string;
+  uploadDir: string;
+  uploadMaxBytes: number;
   defaultWorkspace: string;
   defaultSkipGitRepoCheck: boolean;
   defaultModel: string | null;
@@ -43,6 +54,9 @@ export function getBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCon
     parsed.CODEX_BRIDGE_WORKSPACE_ALLOWLIST,
     defaultWorkspace
   );
+  const uploadDir = path.resolve(
+    parsed.CODEX_BRIDGE_UPLOAD_DIR ?? path.join(os.homedir(), ".codex-mobile", "uploads")
+  );
 
   return {
     host: parsed.CODEX_BRIDGE_HOST,
@@ -50,6 +64,8 @@ export function getBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCon
     runtime: parsed.CODEX_BRIDGE_RUNTIME,
     workspaceAllowlist,
     workspaceAllowlistFile,
+    uploadDir,
+    uploadMaxBytes: parsed.CODEX_BRIDGE_UPLOAD_MAX_BYTES,
     defaultWorkspace,
     defaultSkipGitRepoCheck: parsed.CODEX_BRIDGE_SKIP_GIT_REPO_CHECK,
     defaultModel: parsed.CODEX_BRIDGE_DEFAULT_MODEL?.trim() || null,

@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import { createServer, type Server } from "node:http";
+import os from "node:os";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -192,6 +194,52 @@ describe("Codex bridge HTTP API", () => {
       path: process.cwd(),
       exists: true
     });
+  });
+
+  it("stores uploaded attachments and advertises the upload capability", async () => {
+    const response = await fetch(`${baseUrl}/v1/uploads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "notes.txt",
+        mime_type: "text/plain",
+        data_base64: Buffer.from("hello attachment").toString("base64")
+      })
+    });
+    const body = (await response.json()) as {
+      attachment: { name: string; path: string; size: number; kind: string };
+      max_bytes: number;
+    };
+
+    expect(response.status).toBe(201);
+    expect(body.max_bytes).toBe(1024 * 1024);
+    expect(body.attachment).toMatchObject({ name: "notes.txt", kind: "file", size: 16 });
+    expect(fs.readFileSync(body.attachment.path, "utf8")).toBe("hello attachment");
+
+    const capabilities = (await (await fetch(`${baseUrl}/v1/capabilities`)).json()) as {
+      uploads?: { enabled: boolean; max_bytes: number };
+    };
+    expect(capabilities.uploads).toEqual({ enabled: true, max_bytes: 1024 * 1024 });
+  });
+
+  it("rejects uploads that exceed the configured limit or are not base64", async () => {
+    // 1_070_000 bytes stays inside the HTTP body ceiling but exceeds the 1 MiB file limit.
+    const tooLarge = await fetch(`${baseUrl}/v1/uploads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "big.bin",
+        data_base64: Buffer.alloc(1_070_000).toString("base64")
+      })
+    });
+    expect(tooLarge.status).toBe(413);
+
+    const invalid = await fetch(`${baseUrl}/v1/uploads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "notes.txt", data_base64: "not base64!!" })
+    });
+    expect(invalid.status).toBe(400);
   });
 
   it("exposes filesystem roots and directory children for folder picking", async () => {
@@ -443,6 +491,8 @@ function testConfig(overrides: Partial<BridgeConfig> = {}): BridgeConfig {
     runtime: "sdk",
     workspaceAllowlist: [process.cwd()],
     workspaceAllowlistFile: "__missing_allowlist__",
+    uploadDir: path.join(os.tmpdir(), "codex-mobile-test-uploads"),
+    uploadMaxBytes: 1024 * 1024,
     defaultWorkspace: process.cwd(),
     defaultSkipGitRepoCheck: true,
     defaultModel: null,

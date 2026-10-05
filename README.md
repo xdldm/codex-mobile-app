@@ -237,7 +237,10 @@ Start with:
 The current API includes thread creation/listing/history, run streaming and
 reattach, cancellation, workspace management, filesystem browsing, model/config
 settings, account/rate-limit reads, apps, skills, MCP server/resource access, and
-approvals.
+approvals. It also stages file attachments: `POST /v1/uploads` stores a base64
+payload on the host, and `input_items: [{ type: "attachment", name, path }]`
+forwards it to the run as a `localImage` (images) or a path reference (other
+files).
 
 ## Documentation
 

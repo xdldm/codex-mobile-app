@@ -4,6 +4,7 @@ import {
   FolderGit2,
   ListTree,
   MessageSquarePlus,
+  Paperclip,
   RefreshCcw,
   Send,
   Settings,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -28,6 +30,7 @@ import { IconAction } from "../components/IconAction";
 import { Screen } from "../components/Screen";
 import { StatusPill } from "../components/StatusPill";
 import type { ChatMessage } from "../domain/bridge";
+import { attachmentInputItems, messageForDraft } from "../domain/attachments";
 import { activeMentionTrigger, buildMentionItems, type ComposerMention } from "../domain/mentions";
 import { useBridge } from "../state/BridgeProvider";
 import { colors, spacing } from "../theme/colors";
@@ -56,7 +59,7 @@ export function HomeScreen() {
     [bridge.models, bridge.selectedModelId]
   );
   const canSend =
-    draft.trim().length > 0 &&
+    (draft.trim().length > 0 || bridge.pendingAttachments.length > 0) &&
     !bridge.isRunning &&
     !bridge.isComposerLocked &&
     Boolean(bridge.selectedWorkspace);
@@ -165,8 +168,12 @@ export function HomeScreen() {
   };
 
   const handleSend = () => {
-    const value = draft;
-    const inputItems = selectedMentions.map((mention) => mention.inputItem);
+    const attachments = bridge.pendingAttachments;
+    const value = messageForDraft(draft, attachments.length);
+    const inputItems = [
+      ...selectedMentions.map((mention) => mention.inputItem),
+      ...attachmentInputItems(attachments)
+    ];
     setDraft("");
     setSelectedMentions([]);
     void bridge.sendMessage(value, inputItems);
@@ -270,6 +277,11 @@ export function HomeScreen() {
         ) : null}
 
         <View style={[styles.composer, { paddingBottom: composerBottomPadding }]}>
+          {bridge.attachmentError ? (
+            <Text numberOfLines={2} style={styles.composerError}>
+              {bridge.attachmentError}
+            </Text>
+          ) : null}
           <View style={styles.composerRow}>
             <ComposerMenu
               selectedModel={selectedModel}
@@ -278,9 +290,41 @@ export function HomeScreen() {
                 void bridge.refreshAccount();
               }}
             />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Attach a file"
+              disabled={bridge.isUploadingAttachment}
+              onPress={() => void bridge.attachFile()}
+              style={({ pressed }) => [
+                styles.composerMenuButton,
+                (pressed || bridge.isUploadingAttachment) && styles.composerMenuButtonPressed
+              ]}
+            >
+              {bridge.isUploadingAttachment ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Paperclip size={18} color={colors.textMuted} />
+              )}
+            </Pressable>
             <View style={styles.composerInputWrap}>
-              {selectedMentions.length > 0 ? (
+              {selectedMentions.length > 0 || bridge.pendingAttachments.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mentionChips}>
+                  {bridge.pendingAttachments.map((attachment) => (
+                    <Pressable
+                      key={attachment.id}
+                      onPress={() => bridge.removeAttachment(attachment.id)}
+                      style={({ pressed }) => [
+                        styles.attachmentChip,
+                        pressed && styles.menuItemPressed
+                      ]}
+                    >
+                      <Paperclip size={12} color={colors.textMuted} />
+                      <Text numberOfLines={1} style={styles.attachmentChipText}>
+                        {attachment.name}
+                      </Text>
+                      <X size={12} color={colors.textMuted} />
+                    </Pressable>
+                  ))}
                   {selectedMentions.map((mention) => (
                     <Pressable
                       key={mention.id}

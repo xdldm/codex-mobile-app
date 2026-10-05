@@ -8,6 +8,7 @@ import React, {
   useState,
   type PropsWithChildren
 } from "react";
+import { File } from "expo-file-system";
 
 import { BridgeClient, approvalSummary } from "../api/bridgeClient";
 import { DEFAULT_PREFERENCES } from "../config/defaults";
@@ -40,6 +41,7 @@ import type {
   RunInputItem,
   SandboxMode,
   ThreadArchiveResponse,
+  UploadedAttachment,
   WorkspaceMutationResponse,
   WorkspaceEntry
 } from "../domain/bridge";
@@ -85,6 +87,7 @@ type BridgeContextValue = {
   messages: ChatMessage[];
   activities: ActivityItem[];
   pendingApprovals: PendingApproval[];
+  pendingAttachments: UploadedAttachment[];
   activeRuns: BridgeRunSummary[];
   runningThreadId: string | null;
   isBooting: boolean;
@@ -93,12 +96,14 @@ type BridgeContextValue = {
   isRefreshingMentions: boolean;
   isRefreshingMcp: boolean;
   isLoadingThreadContent: boolean;
+  isUploadingAttachment: boolean;
   isRunning: boolean;
   isComposerLocked: boolean;
   error: string | null;
   accountError: string | null;
   mentionError: string | null;
   mcpError: string | null;
+  attachmentError: string | null;
   setBaseUrl: (baseUrl: string) => void;
   setSelectedModelId: (modelId: string) => void;
   setReasoningEffort: (effort: ReasoningEffort) => void;
@@ -122,6 +127,9 @@ type BridgeContextValue = {
   refreshAll: () => Promise<void>;
   refreshAccount: () => Promise<void>;
   refreshMentions: () => Promise<void>;
+  attachFile: () => Promise<void>;
+  removeAttachment: (id: string) => void;
+  clearAttachments: () => void;
   refreshMcpServers: () => Promise<void>;
   readMcpResource: (server: string, uri: string) => Promise<void>;
   reloadMcpServers: () => Promise<void>;
@@ -171,6 +179,8 @@ const DEFAULT_CAPABILITIES: BridgeCapabilities = {
 
 const PROCESSING_RESULTS_ACTIVITY_ID = "processing_results";
 
+const DEFAULT_MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+
 export function BridgeProvider({ children }: PropsWithChildren) {
   const [preferences, setPreferences] = useState<BridgePreferences>(DEFAULT_PREFERENCES);
   const [health, setHealth] = useState<BridgeHealth | null>(null);
@@ -190,6 +200,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<UploadedAttachment[]>([]);
   const [activeRuns, setActiveRuns] = useState<BridgeRunSummary[]>([]);
   const [isBooting, setIsBooting] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -197,12 +208,14 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const [isRefreshingMentions, setIsRefreshingMentions] = useState(false);
   const [isRefreshingMcp, setIsRefreshingMcp] = useState(false);
   const [isLoadingThreadContent, setIsLoadingThreadContent] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isComposerLocked, setIsComposerLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [mentionError, setMentionError] = useState<string | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const preferencesRef = useRef<BridgePreferences>(DEFAULT_PREFERENCES);
   const selectedThreadRef = useRef<BridgeThread | null>(null);
   const threadContentRequestId = useRef(0);
@@ -211,6 +224,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
   const activeRunId = useRef<string | null>(null);
   const activeRunThreadId = useRef<string | null>(null);
   const activeUserMessageId = useRef<string | null>(null);
+  const isUploadingAttachmentRef = useRef(false);
   const attachedRunId = useRef<string | null>(null);
   const detachedAbortControllers = useRef(new Set<AbortController>());
   const buildConfig = useMemo(() => getCodexMobileBuildConfig(), []);
@@ -961,6 +975,54 @@ export function BridgeProvider({ children }: PropsWithChildren) {
     updatePreferences
   ]);
 
+  const attachFile = useCallback(async () => {
+    if (isUploadingAttachmentRef.current) {
+      return;
+    }
+
+    isUploadingAttachmentRef.current = true;
+    setIsUploadingAttachment(true);
+    setAttachmentError(null);
+
+    try {
+      const picked = await File.pickFileAsync({ mimeTypes: "*/*", multipleFiles: false });
+      if (picked.canceled || !picked.result) {
+        return;
+      }
+
+      const file = picked.result;
+      const maxBytes = capabilities.uploads?.max_bytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+      const size = readFileSize(file);
+      if (size !== null && size > maxBytes) {
+        setAttachmentError(
+          `${file.name} is larger than the ${formatBytes(maxBytes)} upload limit.`
+        );
+        return;
+      }
+
+      const response = await client.uploadAttachment({
+        name: file.name,
+        mimeType: null,
+        dataBase64: await file.base64()
+      });
+      setPendingAttachments((current) => [...current, response.attachment]);
+    } catch (caught) {
+      setAttachmentError(errorMessage(caught));
+    } finally {
+      isUploadingAttachmentRef.current = false;
+      setIsUploadingAttachment(false);
+    }
+  }, [capabilities.uploads?.max_bytes, client]);
+
+  const removeAttachment = useCallback((id: string) => {
+    setPendingAttachments((current) => current.filter((attachment) => attachment.id !== id));
+  }, []);
+
+  const clearAttachments = useCallback(() => {
+    setPendingAttachments([]);
+    setAttachmentError(null);
+  }, []);
+
   const sendMessage = useCallback(
     async (message: string, inputItems: RunInputItem[] = []) => {
       const cleanMessage = message.trim();
@@ -970,6 +1032,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
 
       setError(null);
       setPendingApprovals([]);
+      setPendingAttachments([]);
 
       const userMessage: ChatMessage = {
         id: createId("user"),
@@ -1550,6 +1613,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       messages,
       activities,
       pendingApprovals,
+      pendingAttachments,
       activeRuns,
       runningThreadId: activeRuns[0]?.thread_id ?? activeRunThreadId.current,
       isBooting,
@@ -1558,12 +1622,14 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       isRefreshingMentions,
       isRefreshingMcp,
       isLoadingThreadContent,
+      isUploadingAttachment,
       isRunning,
       isComposerLocked,
       error,
       accountError,
       mentionError,
       mcpError,
+      attachmentError,
       setBaseUrl: (baseUrl) => updatePreferences({ baseUrl: baseUrl.trim() }),
       setSelectedModelId: (modelId) => updatePreferences({ selectedModelId: modelId }),
       setReasoningEffort: (reasoningEffort) => updatePreferences({ reasoningEffort }),
@@ -1575,6 +1641,9 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       refreshAll,
       refreshAccount,
       refreshMentions,
+      attachFile,
+      removeAttachment,
+      clearAttachments,
       refreshMcpServers,
       readMcpResource,
       reloadMcpServers,
@@ -1605,9 +1674,12 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       apps,
       archiveThread,
       addWorkspace,
+      attachFile,
+      attachmentError,
       buildConfig,
       cancelRun,
       capabilities,
+      clearAttachments,
       config,
       createNewThread,
       error,
@@ -1619,6 +1691,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       isRefreshingMentions,
       isRefreshingMcp,
       isRefreshing,
+      isUploadingAttachment,
       listDirectoryChildren,
       listFilesystemRoots,
       isRunning,
@@ -1629,6 +1702,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       messages,
       models,
       pendingApprovals,
+      pendingAttachments,
       preferences,
       readMcpResource,
       refreshAll,
@@ -1638,6 +1712,7 @@ export function BridgeProvider({ children }: PropsWithChildren) {
       refreshWorkspaces,
       refreshThreads,
       reloadMcpServers,
+      removeAttachment,
       removeWorkspace,
       renameThread,
       respondApproval,
@@ -1668,6 +1743,25 @@ export function useBridge() {
 }
 
 type DeliveryStatus = NonNullable<ChatMessage["deliveryStatus"]>;
+
+function readFileSize(file: File): number | null {
+  try {
+    const size = file.info().size;
+    return typeof size === "number" ? size : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatBytes(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${Math.round(bytes / (1024 * 1024))} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${bytes} B`;
+}
 
 function setMessageDeliveryStatus(
   messages: ChatMessage[],

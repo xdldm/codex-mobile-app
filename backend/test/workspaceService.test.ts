@@ -148,6 +148,8 @@ function testConfig(defaultWorkspace: string, workspaceAllowlistFile: string): B
     runtime: "sdk",
     workspaceAllowlist: [],
     workspaceAllowlistFile,
+    uploadDir: path.join(defaultWorkspace, ".uploads"),
+    uploadMaxBytes: 1024 * 1024,
     defaultWorkspace,
     defaultSkipGitRepoCheck: true,
     defaultModel: null,

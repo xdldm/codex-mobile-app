@@ -56,6 +56,10 @@ export type BridgeCapabilities = {
     remove: boolean;
     restore: boolean;
   };
+  uploads?: {
+    enabled: boolean;
+    max_bytes: number;
+  };
 };
 
 export type BridgeThread = {
@@ -272,7 +276,26 @@ export type RunInputItem =
       uri: string;
       name?: string;
       title?: string;
+    }
+  | {
+      type: "attachment";
+      name: string;
+      path: string;
     };
+
+export type UploadedAttachment = {
+  id: string;
+  name: string;
+  path: string;
+  size: number;
+  kind: "image" | "file";
+  created_at: string;
+};
+
+export type UploadAttachmentResponse = {
+  attachment: UploadedAttachment;
+  max_bytes: number;
+};
 
 export type RunStreamBody = {
   message: string;

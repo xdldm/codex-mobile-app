@@ -94,6 +94,7 @@ npm run web
 - Chat em streaming (`POST /v1/threads/:id/runs/stream`) com renderizacao Markdown.
 - Timeline estruturada de atividade, ferramentas e aprovacoes human-in-the-loop, com cancelamento.
 - Mentions estruturadas no composer (`$app` / `$skill` / `$mcp`) e navegacao de recursos MCP.
+- Anexos no composer: escolhe um arquivo pelo seletor do sistema, le em base64, envia para `POST /v1/uploads` e anexa o caminho ao run (imagens vao como imagem; o resto como referencia de caminho).
 - Limites de conta e presets de modo de execucao (sandbox, approval policy, network).
 - Settings para URL do Bridge e defaults do Codex.
 

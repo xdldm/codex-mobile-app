@@ -17,6 +17,7 @@ import type {
   PendingApproval,
   RunStreamBody,
   ThreadArchiveResponse,
+  UploadAttachmentResponse,
   WorkspaceMutationResponse,
   WorkspaceEntry
 } from "../domain/bridge";
@@ -51,6 +52,17 @@ export class BridgeClient {
 
   capabilities() {
     return this.requestJson<BridgeCapabilities>("/v1/capabilities");
+  }
+
+  async uploadAttachment(input: { name: string; mimeType?: string | null; dataBase64: string }) {
+    return this.requestJson<UploadAttachmentResponse>("/v1/uploads", {
+      method: "POST",
+      body: JSON.stringify({
+        name: input.name,
+        ...(input.mimeType ? { mime_type: input.mimeType } : {}),
+        data_base64: input.dataBase64
+      })
+    });
   }
 
   async listWorkspaces() {

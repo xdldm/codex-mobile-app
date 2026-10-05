@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -70,7 +71,7 @@ jobs:
         run: npm test
 
   android:
-    name: Android
+    name: Android APK
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -96,8 +97,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Android debug APK
+      # arm64-v8a only: phones use it, and it keeps the C++ build short.
+      # The release build type is signed with the repo's debug keystore, so no
+      # repository secrets are needed to produce an installable APK.
+      - name: Build Android release APK
         working-directory: mobile/android
         env:
           NODE_ENV: production
-        run: bash ./gradlew :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain --stacktrace
+        run: |
+          bash ./gradlew :app:createBundleReleaseJsAndAssets :app:assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: codex-mobile-release-apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30

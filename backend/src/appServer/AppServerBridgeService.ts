@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import type { BridgeConfig } from "../config.js";
 import { AppError } from "../errors.js";
 import type { CodexRuntimeHealth } from "../runtime/types.js";
 import type { BridgeSseEvent } from "../sse.js";
+import type { UploadService } from "../uploads/UploadService.js";
 import type { RunStreamBody } from "../validation.js";
 import { WorkspaceService } from "../workspaces/WorkspaceService.js";
 import { AsyncQueue } from "../asyncQueue.js";
@@ -41,6 +43,7 @@ type AppServerThread = {
 
 type AppServerUserInput =
   | { type: "text"; text: string }
+  | { type: "localImage"; path: string }
   | { type: "mention"; name: string; path: string }
   | { type: "skill"; name: string; path: string };
 
@@ -64,6 +67,7 @@ export class AppServerBridgeService {
       config: BridgeConfig;
       client: AppServerClient;
       workspaceService: WorkspaceService;
+      uploadService: UploadService;
     }
   ) {}
 
@@ -453,6 +457,27 @@ export class AppServerBridgeService {
         turnInput.push({
           type: "text",
           text: formatMcpResourceForPrompt(item, resource)
+        });
+        continue;
+      }
+
+      if (item.type === "attachment") {
+        const attachment = this.deps.uploadService.resolveAttachment(item.path);
+        if (!attachment) {
+          throw new AppError(
+            400,
+            "invalid_attachment",
+            `Attachment is missing or outside the upload directory: ${item.path}`
+          );
+        }
+
+        const label = path.basename(item.name) || path.basename(attachment.path);
+        if (attachment.kind === "image") {
+          turnInput.push({ type: "localImage", path: attachment.path });
+        }
+        turnInput.push({
+          type: "text",
+          text: `Attached ${attachment.kind === "image" ? "image" : "file"}: ${label} (${attachment.path})`
         });
       }
     }

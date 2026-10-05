@@ -90,6 +90,12 @@ Filesystem picker
 - `GET /v1/filesystem/roots`
 - `GET /v1/filesystem/children?path=...`
 
+Anexos (uploads)
+
+- `POST /v1/uploads` — recebe `{ name?, mime_type?, data_base64 }`, grava o arquivo no diretorio de uploads (`CODEX_BRIDGE_UPLOAD_DIR`, por padrao `~/.codex-mobile/uploads`) e devolve `{ attachment: { id, name, path, size, kind }, max_bytes }`.
+- Limite por arquivo em bytes: `CODEX_BRIDGE_UPLOAD_MAX_BYTES` (padrao 15 MiB). O corpo JSON aceita base64 ate esse limite.
+- No `POST /v1/threads/:threadId/runs*`, use `input_items: [{ type: "attachment", name, path }]`. Imagens viram `localImage` para o app-server; outros arquivos viram uma referencia de texto com o caminho. Caminhos fora do diretorio de uploads sao recusados.
+
 Settings
 
 - `GET /v1/settings/models`

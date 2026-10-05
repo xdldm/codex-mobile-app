@@ -22,8 +22,19 @@ const RunInputItemSchema = z.discriminatedUnion("type", [
     uri: z.string().trim().min(1),
     name: z.string().trim().min(1).optional(),
     title: z.string().trim().min(1).optional()
+  }),
+  z.object({
+    type: z.literal("attachment"),
+    name: z.string().trim().min(1).max(200),
+    path: z.string().trim().min(1)
   })
 ]);
+
+export const UploadBodySchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  mime_type: z.string().trim().min(1).max(200).optional(),
+  data_base64: z.string().min(1)
+});
 
 export const RunStreamBodySchema = z.object({
   message: z.string().trim().min(1),
