@@ -157,6 +157,9 @@ export const styles = StyleSheet.create({
   assistantBubble: {
     // ChatGPT-style: the answer is plain text on the page, not a card, so both
     // sides keep the same margin as the user's bubble.
+    // `flex: 1` keeps the row full width: without it the bubble shrink-wraps and
+    // collapses to a sliver while the reply is still just a spinner.
+    flex: 1,
     maxWidth: "100%",
     borderWidth: 0,
     paddingHorizontal: 0,
